@@ -31,6 +31,7 @@ interface YagiMapProps {
   ubndSigned: Record<string, boolean>;
   onSelectCommune: (gid: string | null) => void;
   onToggleLayer: (key: keyof LayerToggles) => void;
+  onSelectWindMode: (useR64: boolean) => void;
 }
 
 function escHtml(s: string): string {
@@ -119,16 +120,18 @@ export function YagiMap({
   ubndSigned,
   onSelectCommune,
   onToggleLayer,
+  onSelectWindMode,
 }: YagiMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const geoLayerRef = useRef<L.GeoJSON | null>(null);
   const featureLayersRef = useRef<Map<string, L.Path>>(new Map());
+  const selectionRendererRef = useRef<L.SVG | null>(null);
+  const selectionGroupRef = useRef<L.LayerGroup | null>(null);
   const popupRef = useRef<L.Popup | null>(null);
   const suppressPopupCloseRef = useRef<boolean>(false);
   const fullBoundsRef = useRef<L.LatLngBounds | null>(null);
-  const clickedGidRef = useRef<string | null>(null);
-  const needsPanCheckRef = useRef<boolean>(false);
+  const preSelectViewRef = useRef<{ center: L.LatLng; zoom: number } | null>(null);
   const prevSelectedGidRef = useRef<string | null>(selectedGid);
 
   const onSelectRef = useRef(onSelectCommune);
@@ -146,9 +149,18 @@ export function YagiMap({
       renderer: L.canvas({ padding: 0.4 }),
       zoomControl: true,
       attributionControl: true,
+      zoomSnap: 0.25,
+      zoomDelta: 0.5,
       minZoom: 6,
       maxZoom: 14,
     });
+
+    // Dedicated SVG highlight pane above 2,895-polygon Canvas layer, below callout popup
+    const selPane = map.createPane('selectionHighlight');
+    selPane.style.zIndex = '450';
+    selPane.style.pointerEvents = 'none';
+    selectionRendererRef.current = L.svg({ pane: 'selectionHighlight' });
+    selectionGroupRef.current = L.layerGroup().addTo(map);
 
     map.attributionControl.setPrefix(false);
     map.attributionControl.addAttribution(
@@ -202,7 +214,6 @@ export function YagiMap({
 
         pathLayer.on('click', (e) => {
           L.DomEvent.stopPropagation(e);
-          clickedGidRef.current = gid;
           onSelectRef.current(
             evalParamsRef.current.selectedGid === gid ? null : gid
           );
@@ -278,12 +289,87 @@ export function YagiMap({
     return () => {
       resizeObs.disconnect();
       popupRef.current = null;
+      selectionGroupRef.current?.clearLayers();
+      selectionGroupRef.current = null;
+      selectionRendererRef.current = null;
       map.remove();
       mapRef.current = null;
       geoLayerRef.current = null;
       featureLayersRef.current.clear();
     };
   }, [geojson]);
+
+  // Animated game-like shimmering selection highlight overlay for the active commune
+  useEffect(() => {
+    const group = selectionGroupRef.current;
+    const svgRenderer = selectionRendererRef.current;
+    if (!group || !svgRenderer) return;
+
+    group.clearLayers();
+    if (!selectedGid) return;
+
+    const feat = geojson.features.find((f) => f.properties.gid_3 === selectedGid);
+    if (!feat) return;
+
+    // 1. Pulsing luminous inner sheen fill + light outer halo
+    L.geoJSON(feat as unknown as GeoJSON.GeoJsonObject, {
+      style: {
+        fillColor: '#CDECD7',
+        fillOpacity: 0.24,
+        color: '#8ACBB5',
+        weight: 2.5,
+        opacity: 0.35,
+        className: 'yagi-sel-shimmer',
+        interactive: false,
+      },
+      // @ts-expect-error Leaflet runtime GeoJSON renderer option forwarded to vector layer
+      renderer: svgRenderer,
+    }).addTo(group);
+
+    // 2. Subtle hairline contour + crisp elongated gliding dashes along perimeter
+    const topGeo = L.geoJSON(feat as unknown as GeoJSON.GeoJsonObject, {
+      style: {
+        fill: false,
+        color: '#8ACBB5',
+        weight: 1,
+        opacity: 0.3,
+        interactive: false,
+      },
+      // @ts-expect-error Leaflet runtime GeoJSON renderer option forwarded to vector layer
+      renderer: svgRenderer,
+    }).addTo(group);
+
+    L.geoJSON(feat as unknown as GeoJSON.GeoJsonObject, {
+      style: {
+        fill: false,
+        color: '#FFFFFF',
+        weight: 2.3,
+        opacity: 0.98,
+        dashArray: '16 10',
+        lineCap: 'butt',
+        className: 'yagi-sel-march',
+        interactive: false,
+      },
+      // @ts-expect-error Leaflet runtime GeoJSON renderer option forwarded to vector layer
+      renderer: svgRenderer,
+    }).addTo(group);
+
+    // 3. Expanding radial selection burst ring centered on selected commune
+    const layer = featureLayersRef.current.get(selectedGid) as unknown as L.Polygon | undefined;
+    const b = layer?.getBounds?.() ?? topGeo.getBounds();
+    if (b?.isValid()) {
+      L.marker(b.getCenter(), {
+        pane: 'selectionHighlight',
+        interactive: false,
+        icon: L.divIcon({
+          className: '',
+          html: '<div class="yagi-sel-ping-ring"></div>',
+          iconSize: [0, 0],
+          iconAnchor: [0, 0],
+        }),
+      }).addTo(group);
+    }
+  }, [geojson, selectedGid]);
 
   // Re-style all 2,895 polygons immediately when timeline date, toggles, or selectedGid changes
   useEffect(() => {
@@ -310,9 +396,10 @@ export function YagiMap({
     }
   }, [communeMap, dateStr, layers, selectedGid]);
 
-  // Smooth flyTo when selecting a commune, or fly back out to 12-province overview when cleared (null)
+  // Gentle zoom-in when selecting a commune; cleanly zoom back out when cleared (Esc / outside click / X)
   useEffect(() => {
-    if (prevSelectedGidRef.current === selectedGid) {
+    const prevGid = prevSelectedGidRef.current;
+    if (prevGid === selectedGid) {
       return;
     }
     prevSelectedGidRef.current = selectedGid;
@@ -321,29 +408,35 @@ export function YagiMap({
     if (!map) return;
 
     if (selectedGid === null) {
-      clickedGidRef.current = null;
-      if (fullBoundsRef.current?.isValid()) {
+      const saved = preSelectViewRef.current;
+      preSelectViewRef.current = null;
+      if (saved) {
+        map.flyTo(saved.center, saved.zoom, { duration: 0.45 });
+      } else if (fullBoundsRef.current?.isValid()) {
         map.flyToBounds(fullBoundsRef.current, { padding: [16, 16], duration: 0.45 });
       }
       return;
     }
 
+    if (prevGid === null) {
+      preSelectViewRef.current = { center: map.getCenter(), zoom: map.getZoom() };
+    }
+
     const layer = featureLayersRef.current.get(selectedGid) as unknown as L.Polygon | undefined;
     if (!layer) return;
 
-    if (clickedGidRef.current === selectedGid) {
-      clickedGidRef.current = null;
-      needsPanCheckRef.current = true;
-      return;
-    }
-
-    needsPanCheckRef.current = false;
     const b = layer.getBounds();
     if (b && b.isValid()) {
+      const baseZoom = preSelectViewRef.current?.zoom ?? map.getZoom();
+      const gentleMaxZoom = Math.min(11, Math.max(9.5, baseZoom + 1.5, map.getZoom()));
+      const w = containerRef.current?.clientWidth ?? 900;
+      const h = containerRef.current?.clientHeight ?? 600;
+      const xPad = w >= 640 ? 145 : Math.max(24, Math.floor(w * 0.14));
+      const topPad = h >= 440 ? 185 : 130;
       map.flyToBounds(b, {
-        maxZoom: 11,
-        paddingTopLeft: [40, 175],
-        paddingBottomRight: [40, 32],
+        maxZoom: gentleMaxZoom,
+        paddingTopLeft: [xPad, topPad],
+        paddingBottomRight: [xPad, 48],
         duration: 0.45,
       });
     }
@@ -402,37 +495,10 @@ export function YagiMap({
     if (!popupRef.current.isOpen()) {
       popupRef.current.openOn(map);
     }
-
-    // For direct map clicks without flyToBounds, measure real popup DOM rect & pan cleanly inside viewport
-    if (needsPanCheckRef.current) {
-      needsPanCheckRef.current = false;
-      window.requestAnimationFrame(() => {
-        const popEl = popupRef.current?.getElement();
-        const contEl = containerRef.current;
-        if (!popEl || !contEl || !mapRef.current) return;
-        const pRect = popEl.getBoundingClientRect();
-        const cRect = contEl.getBoundingClientRect();
-        const pad = 12;
-        let dx = 0;
-        let dy = 0;
-        if (pRect.top < cRect.top + pad) {
-          dy = pRect.top - (cRect.top + pad);
-        } else if (pRect.bottom > cRect.bottom - pad) {
-          dy = pRect.bottom - (cRect.bottom - pad);
-        }
-        if (pRect.left < cRect.left + pad) {
-          dx = pRect.left - (cRect.left + pad);
-        } else if (pRect.right > cRect.right - pad) {
-          dx = pRect.right - (cRect.right - pad);
-        }
-        if (dx !== 0 || dy !== 0) {
-          mapRef.current.panBy([dx, dy], { animate: true, duration: 0.25 });
-        }
-      });
-    }
   }, [selectedGid, communeMap, dateStr, layers, campaignLaunched, borrowerConfirmed, ubndSigned]);
 
   const handleResetView = () => {
+    preSelectViewRef.current = null;
     onSelectRef.current(null);
     if (mapRef.current && fullBoundsRef.current?.isValid()) {
       mapRef.current.flyToBounds(fullBoundsRef.current, { padding: [16, 16], duration: 0.4 });
@@ -442,38 +508,72 @@ export function YagiMap({
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-canvas">
       {/* Unobstructed Top Map Toolbar & Live Metrics Strip */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-line bg-[#141922] px-4 py-2">
-        {/* Minimal Hairline Segmented Layer Controls */}
+      <div className="flex flex-col gap-2 border-b border-line bg-[#141922] px-4 py-2.5">
+        {/* Stretched Full-Width Layer Trigger Controls */}
         <div
           role="group"
           aria-label="Lớp tín hiệu bản đồ"
-          className="inline-flex flex-wrap items-center divide-x divide-line rounded-[4px] border border-line bg-canvas"
+          className="flex w-full flex-wrap items-center gap-2 sm:flex-nowrap"
         >
           <LayerPill
             active={layers.r1}
-            dotColor="#C2410C"
+            dotColor="#EA580C"
             label="R1 Mưa Đ.44"
             count="1.169"
+            className="min-w-[130px] flex-1 sm:min-w-0"
             onClick={() => onToggleLayer('r1')}
           />
-          <LayerPill
-            active={layers.r3}
-            dotColor="#D97706"
-            label={layers.useR64 ? 'R3 Gió R64' : 'R3 Gió R50'}
-            count={layers.useR64 ? '1.879' : '2.622'}
-            onClick={() => onToggleLayer('r3')}
-          />
-          <LayerPill
-            active={layers.useR64}
-            dotColor="#E11D48"
-            label="Nhạy R64"
-            onClick={() => onToggleLayer('useR64')}
-          />
+
+          {/* Clean R3 Wind Pill + Separate Matte R50/R64 Segmented Switch */}
+          <div className="flex min-w-[230px] flex-[1.55] items-center gap-1.5 sm:min-w-0">
+            <LayerPill
+              active={layers.r3}
+              dotColor={layers.useR64 ? '#BE185D' : '#7C3AED'}
+              label={layers.useR64 ? 'R3 Gió R64' : 'R3 Gió R50'}
+              count={layers.useR64 ? '1.879' : '2.622'}
+              className="flex-1"
+              onClick={() => onToggleLayer('r3')}
+            />
+            <div
+              role="group"
+              aria-label="Ngưỡng gió R3"
+              className="inline-flex h-8 shrink-0 items-center rounded-[5px] border border-[#3E4A5F] bg-[#11161E] p-0.5 font-mono text-[11px]"
+            >
+              <button
+                type="button"
+                onClick={() => onSelectWindMode(false)}
+                title="Ngưỡng gió bão R50 (2.622 xã)"
+                className={`inline-flex h-full items-center gap-1 rounded-[3px] px-2 transition-colors ${
+                  !layers.useR64
+                    ? 'bg-[#263042] font-semibold text-white'
+                    : 'text-[#8E97A4] hover:text-white'
+                }`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-[#7C3AED]" />
+                <span>R50</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onSelectWindMode(true)}
+                title="Ngưỡng nhạy gió mạnh hơn R64 (1.879 xã)"
+                className={`inline-flex h-full items-center gap-1 rounded-[3px] px-2 transition-colors ${
+                  layers.useR64
+                    ? 'bg-[#263042] font-semibold text-white'
+                    : 'text-[#8E97A4] hover:text-white'
+                }`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-[#BE185D]" />
+                <span>R64</span>
+              </button>
+            </div>
+          </div>
+
           <LayerPill
             active={layers.unosat}
             dotColor="#0284C7"
             label="UNOSAT 3966"
             count="718"
+            className="min-w-[130px] flex-1 sm:min-w-0"
             onClick={() => onToggleLayer('unosat')}
           />
           <LayerPill
@@ -481,30 +581,30 @@ export function YagiMap({
             dotColor="#0D9488"
             label="Sentinel-1"
             count="101"
+            className="min-w-[130px] flex-1 sm:min-w-0"
             onClick={() => onToggleLayer('s1')}
           />
         </div>
 
-        {/* Minimal Tabular Regional Telemetry Readout */}
-        <div className="flex flex-wrap items-center gap-4 text-[12px]">
-          <div>
-            <span className="text-inkDim">Xã kích hoạt </span>
-            <span className="font-mono font-semibold text-ink tabular-nums">
-              {formatNum(stats.triggeredCount)}
+        {/* Bold Uniformly Highlighted Regional Telemetry Readout */}
+        <div className="flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-1.5 border-t border-white/[0.08] pt-2 text-[12.5px] font-bold text-[#F1F5F9]">
+          <div className="flex items-baseline gap-1.5">
+            <span>Xã kích hoạt:</span>
+            <span className="font-mono tabular-nums">
+              {formatNum(stats.triggeredCount)} / 2.895
             </span>
-            <span className="font-mono text-inkDim"> / 2.895</span>
           </div>
-          <div className="hidden sm:block">
-            <span className="text-inkDim">Dư nợ vùng (giả lập) </span>
-            <span className="font-mono font-semibold text-ink tabular-nums">
+          <div className="hidden items-baseline gap-1.5 sm:flex">
+            <span>Dư nợ vùng (giả lập):</span>
+            <span className="font-mono tabular-nums">
               {formatVndBillions(stats.triggeredDebtM)}
             </span>
           </div>
-          <div>
-            <span className="text-inkDim">Giữ Nhóm 1 </span>
+          <div className="flex items-baseline gap-1.5">
+            <span>Giữ Nhóm 1:</span>
             <span
-              className={`font-mono font-semibold tabular-nums ${
-                stats.savedLoans > 0 ? 'text-ink' : 'text-inkMuted'
+              className={`font-mono tabular-nums ${
+                stats.savedLoans > 0 ? 'text-[#8ACBB5]' : 'text-[#F1F5F9]'
               }`}
             >
               {formatNum(stats.savedLoans)} khoản
@@ -530,12 +630,16 @@ export function YagiMap({
 
           <div className="pointer-events-auto rounded-[6px] border border-white/[0.08] bg-panel/95 px-3 py-2 text-[11.5px] text-inkMuted">
             <div className="flex items-center gap-2">
-              <span className="inline-block h-2 w-2 rounded-[1px] bg-[#C2410C]" />
+              <span className="inline-block h-2 w-2 rounded-[1px] bg-[#DC2626]" />
               <span>2 nguồn khớp (R1 mưa + R3 gió)</span>
             </div>
             <div className="mt-1 flex items-center gap-2">
-              <span className="inline-block h-2 w-2 rounded-[1px] bg-[#9A5B13]" />
-              <span>1 nguồn khớp (R1 hoặc R3)</span>
+              <span className="inline-block h-2 w-2 rounded-[1px] bg-[#EA580C]" />
+              <span>Chỉ R1 Mưa Đ.44 (&gt;200mm)</span>
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-[1px] bg-[#7C3AED]" />
+              <span>Chỉ R3 Gió R50 / R64</span>
             </div>
             <div className="mt-1 flex items-center gap-2">
               <span className="inline-block h-2 w-2 rounded-[1px] bg-[#0284C7]" />
@@ -561,31 +665,43 @@ interface LayerPillProps {
   dotColor: string;
   label: string;
   count?: string;
+  className?: string;
   onClick: () => void;
 }
 
-function LayerPill({ active, dotColor, label, count, onClick }: LayerPillProps) {
+function LayerPill({ active, dotColor, label, count, className = '', onClick }: LayerPillProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`inline-flex h-7 items-center gap-1.5 px-2.5 text-[12px] font-medium transition-colors ${
+      style={
         active
-          ? 'bg-[#202734] text-ink'
-          : 'bg-transparent text-inkDim hover:bg-[#191F29] hover:text-inkMuted'
-      }`}
+          ? {
+              backgroundColor: dotColor,
+              borderColor: dotColor,
+            }
+          : undefined
+      }
+      className={`inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-[5px] border px-3 text-[12px] transition-colors ${
+        active
+          ? 'font-semibold text-white shadow-sm'
+          : 'border-[#3E4A5F] bg-[#161C26] font-medium text-[#CBD5E1] hover:border-[#5B6B86] hover:bg-[#1E2634] hover:text-white'
+      } ${className}`}
     >
       <span
-        className="h-1.5 w-1.5 shrink-0 rounded-full transition-opacity"
+        className="h-2 w-2 shrink-0 rounded-full"
         style={{
-          backgroundColor: active ? dotColor : '#475569',
-          opacity: active ? 1 : 0.45,
+          backgroundColor: active ? 'rgba(255,255,255,0.92)' : dotColor,
         }}
       />
       <span>{label}</span>
       {count && (
-        <span className="hidden font-mono text-[11px] text-inkDim xl:inline">
+        <span
+          className={`hidden font-mono text-[11px] xl:inline ${
+            active ? 'text-white/85' : 'text-[#8E97A4]'
+          }`}
+        >
           {count}
         </span>
       )}

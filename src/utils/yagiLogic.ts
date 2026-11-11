@@ -119,10 +119,13 @@ export function evaluateCommuneAtDate(
     fillColor = '#0D9488';
     fillOpacity = 0.9;
   } else if (count === 2) {
-    fillColor = '#C2410C';
+    fillColor = '#DC2626';
     fillOpacity = 0.88;
-  } else if (count === 1) {
-    fillColor = '#9A5B13';
+  } else if (r1On) {
+    fillColor = '#EA580C';
+    fillOpacity = 0.85;
+  } else if (r3On) {
+    fillColor = layers.useR64 ? '#BE185D' : '#7C3AED';
     fillOpacity = 0.82;
   }
 

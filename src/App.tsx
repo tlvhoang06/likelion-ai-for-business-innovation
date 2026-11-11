@@ -153,6 +153,14 @@ export default function App() {
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const handleSelectWindMode = (useR64: boolean) => {
+    setLayers((prev) => ({
+      ...prev,
+      r3: true,
+      useR64,
+    }));
+  };
+
   if (loadError) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas p-6 text-ink">
@@ -237,6 +245,7 @@ export default function App() {
             ubndSigned={ubndSigned}
             onSelectCommune={setSelectedGid}
             onToggleLayer={handleToggleLayer}
+            onSelectWindMode={handleSelectWindMode}
           />
           <TimelineDock
             dayIdx={dayIdx}
