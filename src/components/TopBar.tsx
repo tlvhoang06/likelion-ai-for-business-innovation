@@ -6,6 +6,7 @@ import { SHOWCASE_COMMUNES } from '../utils/yagiLogic';
 interface TopBarProps {
   communes: CommuneYagiStatus[];
   selectedGid: string | null;
+  auditOpen?: boolean;
   onSelectCommune: (gid: string | null) => void;
   onOpenAudit: () => void;
 }
@@ -13,6 +14,7 @@ interface TopBarProps {
 export function TopBar({
   communes,
   selectedGid,
+  auditOpen = false,
   onSelectCommune,
   onOpenAudit,
 }: TopBarProps) {
@@ -61,12 +63,11 @@ export function TopBar({
   );
 
   return (
-    <header className="flex min-h-[52px] flex-wrap items-center justify-between gap-3 border-b border-line bg-panel px-4 py-2">
+    <header className="flex min-h-[52px] flex-wrap items-center justify-between gap-3 border-b border-lineStrong bg-panel px-4 py-2">
       <div className="flex flex-wrap items-baseline gap-2.5">
         <span className="font-mono text-[15px] font-semibold tracking-tight text-ink">
-          KỊP THỜI
+          ResiLend
         </span>
-        <span className="text-[12.5px] font-medium text-inkMuted">ResiLend</span>
         <span className="hidden text-lineStrong sm:inline">|</span>
         <span className="text-[12.5px] text-inkMuted">
           Hạ tầng kích hoạt giãn nợ &amp; chi trả chỉ số thiên tai · 2.895 xã GADM v4.1
@@ -74,10 +75,16 @@ export function TopBar({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {/* Commune Quick Search */}
+        {/* Commune Quick Search (dark canvas interior, mint button border only) */}
         <div ref={boxRef} className="relative">
-          <div className="flex h-8 items-center gap-1.5 rounded-[4px] border border-line bg-canvas px-2.5 focus-within:border-lineStrong">
-            <Search className="h-3.5 w-3.5 text-inkDim" strokeWidth={1.75} />
+          <div
+            className={`flex h-8 items-center gap-1.5 rounded-[6px] border bg-canvas px-2.5 transition-colors ${
+              openSearch
+                ? 'border-[#CDECD7]'
+                : 'border-[#8ACBB5] hover:border-[#CDECD7]'
+            }`}
+          >
+            <Search className="h-3.5 w-3.5 text-[#8ACBB5]" strokeWidth={1.75} />
             <input
               type="text"
               value={query}
@@ -151,17 +158,31 @@ export function TopBar({
                         }}
                         className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-[12.5px] transition-colors ${
                           active
-                            ? 'bg-[#212936] text-ink'
+                            ? 'bg-[#8ACBB5] text-[#0E1F1A]'
                             : 'text-inkMuted hover:bg-[#1C222D] hover:text-ink'
                         }`}
                       >
                         <div className="min-w-0 pr-2">
-                          <div className="truncate font-medium text-ink">{commune.name}</div>
-                          <div className="truncate text-[11px] text-inkDim">
+                          <div
+                            className={`truncate ${
+                              active ? 'font-semibold text-[#0E1F1A]' : 'font-medium text-ink'
+                            }`}
+                          >
+                            {commune.name}
+                          </div>
+                          <div
+                            className={`truncate text-[11px] ${
+                              active ? 'font-medium text-[#0E1F1A]/80' : 'text-inkDim'
+                            }`}
+                          >
                             {commune.district}, {commune.province}
                           </div>
                         </div>
-                        <span className="shrink-0 font-mono text-[11px] text-inkMuted">
+                        <span
+                          className={`shrink-0 font-mono text-[11px] ${
+                            active ? 'font-semibold text-[#0E1F1A]' : 'text-inkMuted'
+                          }`}
+                        >
                           {note}
                         </span>
                       </button>
@@ -173,16 +194,20 @@ export function TopBar({
           )}
         </div>
 
-        <span className="hidden rounded-[4px] border border-line bg-canvas px-2.5 py-1 font-mono text-[11.5px] text-inkMuted xl:inline-flex">
+        <span className="hidden h-8 items-center rounded-[6px] border border-[#8ACBB5]/70 bg-[#CDECD7] px-2.5 font-mono text-[11.5px] font-semibold text-[#0E1F1A] xl:inline-flex">
           TT 29/2025 · 10 ngày
         </span>
 
         <button
           type="button"
           onClick={onOpenAudit}
-          className="inline-flex h-8 items-center gap-1.5 rounded-[4px] border border-line bg-transparent px-2.5 text-[12px] font-medium text-inkMuted transition-colors hover:border-lineStrong hover:bg-panelAlt hover:text-ink"
+          className={`inline-flex h-8 items-center gap-1.5 rounded-[6px] border px-2.5 text-[12px] font-semibold transition-colors ${
+            auditOpen
+              ? 'border-[#8ACBB5] bg-[#8ACBB5] text-[#0E1F1A] shadow-sm'
+              : 'border-[#8ACBB5]/70 bg-[#CDECD7] text-[#0E1F1A] hover:bg-[#D8F1E0]'
+          }`}
         >
-          <BookOpen className="h-3.5 w-3.5" strokeWidth={1.75} />
+          <BookOpen className="h-3.5 w-3.5" strokeWidth={1.9} />
           <span>Kiểm chứng &amp; Pháp lý</span>
         </button>
       </div>

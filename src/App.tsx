@@ -187,19 +187,20 @@ export default function App() {
       <TopBar
         communes={communes}
         selectedGid={selectedGid}
+        auditOpen={auditOpen}
         onSelectCommune={setSelectedGid}
         onOpenAudit={() => setAuditOpen(true)}
       />
 
       {/* Quick Showcase Anchor Strip with instant Overview reset + toggle off */}
-      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-line bg-[#13171F] px-4 py-1.5 text-[11.5px]">
+      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-lineStrong bg-[#13171F] px-4 py-1.5 text-[11.5px]">
         <button
           type="button"
           onClick={() => setSelectedGid(null)}
-          className={`inline-flex shrink-0 items-center gap-1.5 rounded-[3px] border px-2 py-0.5 font-medium transition-colors ${
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-[5px] border px-2.5 py-0.5 font-medium transition-colors ${
             selectedGid === null
-              ? 'border-[#4D5A70] bg-[#212834] text-ink'
-              : 'border-line bg-transparent text-inkMuted hover:border-lineStrong hover:text-ink'
+              ? 'border-[#8ACBB5] bg-[#8ACBB5] font-semibold text-[#0E1F1A] shadow-sm'
+              : 'border-line bg-transparent text-inkMuted hover:border-[#8ACBB5]/60 hover:text-ink'
           }`}
         >
           <span>Toàn vùng (2.895 xã)</span>
@@ -216,15 +217,25 @@ export default function App() {
                 setSelectedGid((prev) => (prev === s.gid ? null : s.gid))
               }
               title={active ? 'Bấm lại để thoát về Tổng quan' : 'Bấm để phóng tới xã'}
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-[3px] border px-2 py-0.5 transition-colors ${
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-[5px] border px-2.5 py-0.5 transition-colors ${
                 active
-                  ? 'border-[#4D5A70] bg-[#212834] text-ink'
-                  : 'border-line bg-transparent text-inkMuted hover:border-lineStrong hover:text-ink'
+                  ? 'border-[#8ACBB5] bg-[#8ACBB5] font-semibold text-[#0E1F1A] shadow-sm'
+                  : 'border-line bg-transparent text-inkMuted hover:border-[#8ACBB5]/60 hover:text-ink'
               }`}
             >
               <span>{s.label}</span>
-              <span className="font-mono text-[10.5px] text-inkDim">{s.tag}</span>
-              {active && <span className="ml-0.5 text-[11px] text-inkMuted">&times;</span>}
+              <span
+                className={`font-mono text-[10.5px] ${
+                  active ? 'font-semibold text-[#0E1F1A]/80' : 'text-inkDim'
+                }`}
+              >
+                {s.tag}
+              </span>
+              {active && (
+                <span className="ml-0.5 text-[11px] font-semibold text-[#0E1F1A]/80">
+                  &times;
+                </span>
+              )}
             </button>
           );
         })}

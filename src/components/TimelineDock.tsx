@@ -25,7 +25,7 @@ export function TimelineDock({
   return (
     <section
       aria-label="Thanh mốc thời gian Bão Yagi"
-      className="border-t border-line bg-panel px-4 py-3 sm:px-5"
+      className="border-t border-lineStrong bg-panel px-4 py-3 sm:px-5"
     >
       {/* Top 2-column control strip */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
@@ -38,7 +38,7 @@ export function TimelineDock({
                 onClick={() => onChangeDay(Math.max(0, dayIdx - 1))}
                 disabled={dayIdx === 0}
                 title="Ngày trước"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] border border-[#3E4A5F] bg-[#161C26] text-inkMuted transition-colors hover:border-[#5B6B86] hover:text-ink disabled:opacity-35"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] border border-[#8ACBB5] bg-[#161C26] text-[#CDECD7] transition-colors hover:border-[#CDECD7] hover:bg-[#8ACBB5]/15 hover:text-white disabled:opacity-35"
               >
                 <ChevronLeft className="h-4 w-4" strokeWidth={1.75} />
               </button>
@@ -68,7 +68,7 @@ export function TimelineDock({
                 onClick={() => onChangeDay(Math.min(TIMELINE_DAYS.length - 1, dayIdx + 1))}
                 disabled={dayIdx === TIMELINE_DAYS.length - 1}
                 title="Ngày tiếp theo"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] border border-[#3E4A5F] bg-[#161C26] text-inkMuted transition-colors hover:border-[#5B6B86] hover:text-ink disabled:opacity-35"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] border border-[#8ACBB5] bg-[#161C26] text-[#CDECD7] transition-colors hover:border-[#CDECD7] hover:bg-[#8ACBB5]/15 hover:text-white disabled:opacity-35"
               >
                 <ChevronRight className="h-4 w-4" strokeWidth={1.75} />
               </button>
@@ -104,8 +104,8 @@ export function TimelineDock({
           <Send className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} />
           <span>
             {campaignLaunched
-              ? 'Đã phát đề xuất TT 29 toàn vùng'
-              : 'Phát đề xuất 1-Chạm toàn vùng'}
+              ? 'Đã gửi giãn nợ TT 29 toàn vùng'
+              : 'Gửi đề xuất giãn nợ toàn vùng'}
           </span>
         </button>
       </div>
@@ -135,19 +135,23 @@ export function TimelineDock({
                 type="button"
                 onClick={() => onChangeDay(idx)}
                 className={`flex flex-col items-center justify-center rounded-[5px] border px-1 py-1.5 transition-colors ${active
-                  ? 'border-[#8ACBB5]/70 bg-[#1B2B27] text-[#EDF8EF]'
+                  ? 'border-[#8ACBB5] bg-[#8ACBB5] text-[#0E1F1A] shadow-sm'
                   : pastOrNow
-                    ? 'border-[#8ACBB5]/25 bg-[#15201E] text-[#A8D5C5] hover:border-[#8ACBB5]/50 hover:text-[#EDF8EF]'
-                    : 'border-line/70 bg-transparent text-inkDim hover:border-lineStrong hover:text-inkMuted'
+                    ? 'border-[#8ACBB5]/30 bg-[#15201E] text-[#A8D5C5] hover:border-[#8ACBB5]/60 hover:text-[#EDF8EF]'
+                    : 'border-line bg-transparent text-inkDim hover:border-lineStrong hover:text-inkMuted'
                   }`}
               >
-                <span className="font-mono text-[11.5px] font-medium tabular-nums">
+                <span
+                  className={`font-mono text-[11.5px] tabular-nums ${
+                    active ? 'font-bold text-[#0E1F1A]' : 'font-medium'
+                  }`}
+                >
                   {day.shortDate}
                 </span>
                 <span
                   className={`mt-0.5 truncate text-[10px] leading-tight ${day.tag
                     ? active
-                      ? 'font-medium text-[#8ACBB5]'
+                      ? 'font-semibold text-[#0E1F1A]/85'
                       : pastOrNow
                         ? 'text-[#8ACBB5]/80'
                         : 'text-inkDim'

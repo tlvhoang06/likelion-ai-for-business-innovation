@@ -508,7 +508,7 @@ export function YagiMap({
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-canvas">
       {/* Unobstructed Top Map Toolbar & Live Metrics Strip */}
-      <div className="flex flex-col gap-2 border-b border-line bg-[#141922] px-4 py-2.5">
+      <div className="flex flex-col gap-2 border-b border-lineStrong bg-[#141922] px-4 py-2.5">
         {/* Stretched Full-Width Layer Trigger Controls */}
         <div
           role="group"
@@ -587,7 +587,7 @@ export function YagiMap({
         </div>
 
         {/* Bold Uniformly Highlighted Regional Telemetry Readout */}
-        <div className="flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-1.5 border-t border-white/[0.08] pt-2 text-[12.5px] font-bold text-[#F1F5F9]">
+        <div className="flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-1.5 border-t border-line pt-2 text-[12.5px] font-bold text-[#F1F5F9]">
           <div className="flex items-baseline gap-1.5">
             <span>Xã kích hoạt:</span>
             <span className="font-mono tabular-nums">
@@ -617,18 +617,21 @@ export function YagiMap({
       <div className="relative min-h-[360px] flex-1 bg-canvas">
         <div ref={containerRef} className="absolute inset-0" />
 
-        {/* Reset Bounds Utility Button + Compact Cartographic Key over Gulf of Tonkin */}
-        <div className="pointer-events-none absolute bottom-3 right-3 z-[800] flex flex-col items-end gap-2">
+        {/* Reset Bounds Utility Button on bottom-left */}
+        <div className="pointer-events-none absolute bottom-3 left-3 z-[800]">
           <button
             type="button"
             onClick={handleResetView}
-            className="pointer-events-auto inline-flex h-7 items-center gap-1.5 rounded-[6px] border border-white/[0.1] bg-panel/95 px-2.5 text-[11.5px] font-medium text-inkMuted transition-colors hover:bg-panelAlt hover:text-ink"
+            className="pointer-events-auto inline-flex h-7 items-center gap-1.5 rounded-[6px] border border-lineStrong bg-panel/95 px-2.5 text-[11.5px] font-medium text-inkMuted transition-colors hover:border-[#8ACBB5] hover:bg-panelAlt hover:text-ink"
           >
             <Maximize2 className="h-3 w-3" strokeWidth={1.75} />
             <span>Toàn vùng 12 tỉnh</span>
           </button>
+        </div>
 
-          <div className="pointer-events-auto rounded-[6px] border border-white/[0.08] bg-panel/95 px-3 py-2 text-[11.5px] text-inkMuted">
+        {/* Compact Cartographic Key over Gulf of Tonkin */}
+        <div className="pointer-events-none absolute bottom-3 right-3 z-[800] flex flex-col items-end gap-2">
+          <div className="pointer-events-auto rounded-[6px] border border-lineStrong bg-panel/95 px-3 py-2 text-[11.5px] text-inkMuted">
             <div className="flex items-center gap-2">
               <span className="inline-block h-2 w-2 rounded-[1px] bg-[#DC2626]" />
               <span>2 nguồn khớp (R1 mưa + R3 gió)</span>
