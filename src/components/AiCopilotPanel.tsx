@@ -9,6 +9,7 @@ import {
 import type { CommuneYagiStatus, Lang, RiverStationR2 } from '../types/yagi';
 import { formatNum, formatVndBillions } from '../utils/yagiLogic';
 import {
+  checkServerGeminiProxy,
   runHybridCopilotQuery,
   verifyGeminiApiKey,
   type AiWorkspaceAction,
@@ -116,12 +117,23 @@ export function AiCopilotPanel({
     }
   });
   const [showKeyInput, setShowKeyInput] = useState(false);
+  const [serverProxyReady, setServerProxyReady] = useState(false);
   const [keyStatus, setKeyStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
   const [keyMessage, setKeyMessage] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void checkServerGeminiProxy().then((ready) => {
+      if (active) setServerProxyReady(ready);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleVerifyKey = async (rawKey = apiKey) => {
     const trimmed = rawKey.trim();
@@ -212,6 +224,7 @@ export function AiCopilotPanel({
         dateStr,
         lang,
         apiKey,
+        useServerProxy: serverProxyReady,
       });
       if (response.uiAction) {
         onApplyAiAction?.(response.uiAction);
@@ -260,7 +273,7 @@ export function AiCopilotPanel({
             }
             className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-[4px] border border-lineStrong bg-panelAlt px-2.5 text-[11px] font-medium text-inkMuted transition-colors hover:border-inkDim hover:text-ink"
           >
-            {keyStatus === 'valid' ? (
+            {keyStatus === 'valid' || (serverProxyReady && !apiKey.trim()) ? (
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
             ) : keyStatus === 'invalid' ? (
               <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
@@ -275,6 +288,8 @@ export function AiCopilotPanel({
                   ? 'Checking...'
                   : 'Đang kiểm...'
                 : keyStatus === 'valid'
+                ? 'Gemini ON'
+                : serverProxyReady && !apiKey.trim()
                 ? 'Gemini ON'
                 : apiKey.trim()
                 ? 'API Key'
@@ -337,6 +352,13 @@ export function AiCopilotPanel({
                 }`}
               >
                 {keyMessage}
+              </div>
+            )}
+            {!keyMessage && serverProxyReady && !apiKey.trim() && (
+              <div className="rounded-[4px] border border-lineStrong bg-panelAlt px-2.5 py-1.5 text-[11px] text-[#CDECD7]">
+                {lang === 'en'
+                  ? 'Connected via Vercel server proxy (/api/gemini). You can paste a personal key above to override.'
+                  : 'Đang dùng Gemini trực tiếp qua server proxy (/api/gemini). Có thể dán key riêng ở trên nếu muốn dùng thay thế.'}
               </div>
             )}
             <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px] text-inkDim">

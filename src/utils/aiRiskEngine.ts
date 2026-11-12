@@ -1337,6 +1337,20 @@ function answerLocallyGrounded(
 }
 
 /** Validate a Google AI Studio Gemini API key without consuming generation tokens. */
+export async function checkServerGeminiProxy(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/gemini', { method: 'GET' });
+    const ct = res.headers.get('content-type') || '';
+    if (!res.ok || !ct.includes('application/json')) {
+      return false;
+    }
+    const json = (await res.json().catch(() => null)) as { configured?: boolean } | null;
+    return Boolean(json?.configured);
+  } catch {
+    return false;
+  }
+}
+
 export async function verifyGeminiApiKey(
   apiKey: string
 ): Promise<{ ok: true; model: string } | { ok: false; error: string }> {
@@ -1545,21 +1559,29 @@ async function postGeminiContents(
     ...(isThinkingModel ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
   };
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(
-      cleanKey
-    )}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemText }] },
-        tools: [{ functionDeclarations: GEMINI_TOOL_DECLARATIONS }],
-        contents,
-        generationConfig,
-      }),
-    }
-  );
+  const payload = {
+    systemInstruction: { parts: [{ text: systemText }] },
+    tools: [{ functionDeclarations: GEMINI_TOOL_DECLARATIONS }],
+    contents,
+    generationConfig,
+  };
+
+  const res = cleanKey
+    ? await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(
+          cleanKey
+        )}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      )
+    : await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, payload }),
+      });
 
   const json = (await res.json().catch(() => null)) as {
     candidates?: Array<{
@@ -1747,12 +1769,13 @@ export async function runHybridCopilotQuery(
     dateStr: string;
     lang: Lang;
     apiKey?: string;
+    useServerProxy?: boolean;
   }
 ): Promise<CopilotResponse> {
-  const cleanKey = ctx.apiKey?.trim();
+  const cleanKey = ctx.apiKey?.trim() ?? '';
   const localResult = answerLocallyGrounded(question, ctx);
 
-  if (!cleanKey) {
+  if (!cleanKey && !ctx.useServerProxy) {
     return localResult;
   }
 
