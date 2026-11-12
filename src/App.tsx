@@ -16,6 +16,10 @@ import { YagiMap } from './components/YagiMap';
 import { TimelineDock } from './components/TimelineDock';
 import { OperationalDrawer } from './components/OperationalDrawer';
 import { VerificationModal } from './components/VerificationModal';
+import {
+  DeferralConfirmModal,
+  type PendingDeferralConfirm,
+} from './components/DeferralConfirmModal';
 
 export default function App() {
   const [communes, setCommunes] = useState<CommuneYagiStatus[]>([]);
@@ -40,6 +44,8 @@ export default function App() {
   const [ubndSigned, setUbndSigned] = useState<Record<string, boolean>>({});
   const [exceptionsResolved, setExceptionsResolved] = useState<Record<string, boolean>>({});
   const [auditOpen, setAuditOpen] = useState<boolean>(false);
+  const [pendingDeferral, setPendingDeferral] =
+    useState<PendingDeferralConfirm | null>(null);
 
   // Load verified static datasets
   useEffect(() => {
@@ -74,11 +80,13 @@ export default function App() {
     };
   }, []);
 
-  // Escape key returns to Overview mode cleanly (closes Audit modal first if open)
+  // Escape key dismisses active modal first, otherwise returns to Overview mode cleanly
   useEffect(() => {
     function handleEsc(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        if (auditOpen) {
+        if (pendingDeferral) {
+          setPendingDeferral(null);
+        } else if (auditOpen) {
           setAuditOpen(false);
         } else {
           setSelectedGid(null);
@@ -87,7 +95,7 @@ export default function App() {
     }
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [auditOpen]);
+  }, [pendingDeferral, auditOpen]);
 
   // Auto-playback for timeline scrubber
   useEffect(() => {
@@ -159,6 +167,29 @@ export default function App() {
       r3: true,
       useR64,
     }));
+  };
+
+  const handleRequestRegionalDeferral = () => {
+    if (!campaignLaunched) {
+      setPendingDeferral({ scope: 'regional' });
+    }
+  };
+
+  const handleRequestCommuneDeferral = (gid: string) => {
+    const target = communeMap.get(gid);
+    if (!target || borrowerConfirmed[gid] || campaignLaunched) return;
+    setPendingDeferral({ scope: 'commune', commune: target });
+  };
+
+  const handleConfirmPendingDeferral = () => {
+    if (!pendingDeferral) return;
+    if (pendingDeferral.scope === 'regional') {
+      setCampaignLaunched(true);
+    } else {
+      const gid = pendingDeferral.commune.gid_3;
+      setBorrowerConfirmed((prev) => ({ ...prev, [gid]: true }));
+    }
+    setPendingDeferral(null);
   };
 
   if (loadError) {
@@ -267,7 +298,7 @@ export default function App() {
               setDayIdx(idx);
             }}
             onTogglePlay={() => setIsPlaying((p) => !p)}
-            onLaunchCampaign={() => setCampaignLaunched(true)}
+            onLaunchCampaign={handleRequestRegionalDeferral}
           />
         </section>
 
@@ -289,10 +320,8 @@ export default function App() {
             setIsPlaying(false);
             setDayIdx(7); // 2024-09-12 peak UNOSAT + Dap Cau/Pha Lai
           }}
-          onLaunchCampaign={() => setCampaignLaunched(true)}
-          onConfirmBorrower={(gid) =>
-            setBorrowerConfirmed((prev) => ({ ...prev, [gid]: true }))
-          }
+          onLaunchCampaign={handleRequestRegionalDeferral}
+          onConfirmBorrower={handleRequestCommuneDeferral}
           onSignUbnd={(gid) =>
             setUbndSigned((prev) => ({ ...prev, [gid]: true }))
           }
@@ -301,6 +330,15 @@ export default function App() {
           }
         />
       </main>
+
+      <DeferralConfirmModal
+        pending={pendingDeferral}
+        dateStr={currentDay.date}
+        totalCommunes={communes.length}
+        stats={stats}
+        onCancel={() => setPendingDeferral(null)}
+        onConfirm={handleConfirmPendingDeferral}
+      />
 
       <VerificationModal
         open={auditOpen}

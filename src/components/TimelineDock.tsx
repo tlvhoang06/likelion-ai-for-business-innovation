@@ -96,7 +96,7 @@ export function TimelineDock({
           type="button"
           onClick={onLaunchCampaign}
           disabled={campaignLaunched}
-          className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[6px] px-4.5 px-5 text-[13px] font-semibold transition-colors sm:min-w-[236px] sm:self-center ${campaignLaunched
+          className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[6px] px-5 text-[13px] font-semibold transition-colors sm:min-w-[236px] sm:self-center ${campaignLaunched
             ? 'bg-[#8ACBB5] text-[#0E1F1A] shadow-sm'
             : 'bg-[#CDECD7] text-[#0E1F1A] hover:bg-[#D8F1E0]'
             }`}
