@@ -1,7 +1,17 @@
 import { ChevronLeft, ChevronRight, Pause, Play, Send } from 'lucide-react';
-import { TIMELINE_DAYS } from '../utils/yagiLogic';
+import type { Lang } from '../types/yagi';
+import { SIGNAL_COLORS, TIMELINE_DAYS } from '../utils/yagiLogic';
+
+function getTimelineTagColor(date: string): string {
+  if (date === '2024-09-07') return SIGNAL_COLORS.r3R50; // Landfall R3 wind
+  if (date === '2024-09-08') return SIGNAL_COLORS.r1; // Rain R1
+  if (date === '2024-09-11') return SIGNAL_COLORS.s1; // B5 River gauges
+  if (date === '2024-09-12') return SIGNAL_COLORS.unosat; // UNOSAT peak
+  return SIGNAL_COLORS.r2;
+}
 
 interface TimelineDockProps {
+  lang: Lang;
   dayIdx: number;
   isPlaying: boolean;
   campaignLaunched: boolean;
@@ -11,6 +21,7 @@ interface TimelineDockProps {
 }
 
 export function TimelineDock({
+  lang,
   dayIdx,
   isPlaying,
   campaignLaunched,
@@ -19,47 +30,50 @@ export function TimelineDock({
   onLaunchCampaign,
 }: TimelineDockProps) {
   const current = TIMELINE_DAYS[dayIdx] ?? TIMELINE_DAYS[0];
+  const currentTag = lang === 'en' ? current.tagEn : current.tag;
+  const currentSummary = lang === 'en' ? current.summaryEn : current.summary;
   const progressPct =
     TIMELINE_DAYS.length > 1 ? (dayIdx / (TIMELINE_DAYS.length - 1)) * 100 : 0;
 
   return (
     <section
-      aria-label="Thanh mốc thời gian Bão Yagi"
+      data-tour="timeline-dock"
+      aria-label={lang === 'en' ? 'Typhoon Yagi Timeline' : 'Thanh mốc thời gian Bão Yagi'}
       className="border-t border-lineStrong bg-panel px-4 py-3 sm:px-5"
     >
       {/* Top 2-column control strip */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex min-w-0 flex-1 flex-col justify-center">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Prev / Mint-patterned Play / Next controls */}
+            {/* Prev / Play / Next controls */}
             <div className="inline-flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => onChangeDay(Math.max(0, dayIdx - 1))}
                 disabled={dayIdx === 0}
-                title="Ngày trước"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] border border-[#8ACBB5] bg-[#161C26] text-[#CDECD7] transition-colors hover:border-[#CDECD7] hover:bg-[#8ACBB5]/15 hover:text-white disabled:opacity-35"
+                title={lang === 'en' ? 'Previous day' : 'Ngày trước'}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-[4px] border border-lineStrong bg-canvas text-inkMuted transition-colors hover:border-inkDim hover:text-ink disabled:opacity-35"
               >
                 <ChevronLeft className="h-4 w-4" strokeWidth={1.75} />
               </button>
               <button
                 type="button"
                 onClick={onTogglePlay}
-                className={`inline-flex h-8 items-center gap-1.5 rounded-[6px] px-3 text-[12.5px] font-medium transition-colors ${
+                className={`inline-flex h-8 items-center gap-1.5 rounded-[4px] px-3 text-[12.5px] font-medium transition-colors ${
                   isPlaying
-                    ? 'bg-[#8ACBB5] text-[#0E1F1A] shadow-sm'
+                    ? 'bg-[#8ACBB5] text-[#0E1F1A]'
                     : 'bg-[#CDECD7] text-[#0E1F1A] hover:bg-[#D8F1E0]'
                 }`}
               >
                 {isPlaying ? (
                   <>
                     <Pause className="h-3.5 w-3.5" strokeWidth={1.85} />
-                    <span>Tạm dừng</span>
+                    <span>{lang === 'en' ? 'Pause' : 'Tạm dừng'}</span>
                   </>
                 ) : (
                   <>
                     <Play className="h-3.5 w-3.5" strokeWidth={1.85} />
-                    <span>Phát dòng bão</span>
+                    <span>{lang === 'en' ? 'Play Storm' : 'Phát dòng bão'}</span>
                   </>
                 )}
               </button>
@@ -67,8 +81,8 @@ export function TimelineDock({
                 type="button"
                 onClick={() => onChangeDay(Math.min(TIMELINE_DAYS.length - 1, dayIdx + 1))}
                 disabled={dayIdx === TIMELINE_DAYS.length - 1}
-                title="Ngày tiếp theo"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] border border-[#8ACBB5] bg-[#161C26] text-[#CDECD7] transition-colors hover:border-[#CDECD7] hover:bg-[#8ACBB5]/15 hover:text-white disabled:opacity-35"
+                title={lang === 'en' ? 'Next day' : 'Ngày tiếp theo'}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-[4px] border border-lineStrong bg-canvas text-inkMuted transition-colors hover:border-inkDim hover:text-ink disabled:opacity-35"
               >
                 <ChevronRight className="h-4 w-4" strokeWidth={1.75} />
               </button>
@@ -78,16 +92,22 @@ export function TimelineDock({
               <span className="font-mono text-[20px] font-semibold tracking-tight text-ink tabular-nums">
                 {current.displayDate}
               </span>
-              {current.tag && (
-                <span className="rounded-[4px] bg-white/[0.07] px-2 py-0.5 font-mono text-[11px] font-medium text-inkMuted">
-                  {current.tag}
+              {currentTag && (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-[4px] border border-white/[0.1] bg-white/[0.04] px-2 py-0.5 font-mono text-[11px] font-medium text-ink"
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: getTimelineTagColor(current.date) }}
+                  />
+                  <span>{currentTag}</span>
                 </span>
               )}
             </div>
           </div>
 
           <p className="mt-1.5 text-[12.5px] leading-snug text-inkMuted">
-            {current.summary}
+            {currentSummary}
           </p>
         </div>
 
@@ -104,7 +124,11 @@ export function TimelineDock({
           <Send className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} />
           <span>
             {campaignLaunched
-              ? 'Đã gửi giãn nợ TT 29 toàn vùng'
+              ? lang === 'en'
+                ? 'Regional Circular 29 offers sent'
+                : 'Đã gửi giãn nợ TT 29 toàn vùng'
+              : lang === 'en'
+              ? 'Send regional deferral offers'
               : 'Gửi đề xuất giãn nợ toàn vùng'}
           </span>
         </button>
@@ -118,7 +142,11 @@ export function TimelineDock({
           max={TIMELINE_DAYS.length - 1}
           value={dayIdx}
           onChange={(e) => onChangeDay(Number(e.target.value))}
-          aria-label="Chọn ngày mô phỏng bão Yagi"
+          aria-label={
+            lang === 'en'
+              ? 'Select Typhoon Yagi simulation date'
+              : 'Chọn ngày mô phỏng bão Yagi'
+          }
           style={{
             background: `linear-gradient(to right, #8ACBB5 0%, #8ACBB5 ${progressPct}%, #232B38 ${progressPct}%, #232B38 100%)`,
           }}
@@ -129,15 +157,16 @@ export function TimelineDock({
           {TIMELINE_DAYS.map((day, idx) => {
             const active = idx === dayIdx;
             const pastOrNow = idx <= dayIdx;
+            const dayTag = lang === 'en' ? day.tagEn : day.tag;
             return (
               <button
                 key={day.date}
                 type="button"
                 onClick={() => onChangeDay(idx)}
-                className={`flex flex-col items-center justify-center rounded-[5px] border px-1 py-1.5 transition-colors ${active
-                  ? 'border-[#8ACBB5] bg-[#8ACBB5] text-[#0E1F1A] shadow-sm'
+                className={`flex flex-col items-center justify-center rounded-[4px] border px-1 py-1.5 transition-colors ${active
+                  ? 'border-[#8ACBB5] bg-[#8ACBB5] text-[#0E1F1A]'
                   : pastOrNow
-                    ? 'border-[#8ACBB5]/30 bg-[#15201E] text-[#A8D5C5] hover:border-[#8ACBB5]/60 hover:text-[#EDF8EF]'
+                    ? 'border-lineStrong bg-[#18202B] text-inkMuted hover:border-inkDim hover:text-ink'
                     : 'border-line bg-transparent text-inkDim hover:border-lineStrong hover:text-inkMuted'
                   }`}
               >
@@ -149,16 +178,19 @@ export function TimelineDock({
                   {day.shortDate}
                 </span>
                 <span
-                  className={`mt-0.5 truncate text-[10px] leading-tight ${day.tag
+                  style={
+                    dayTag && !active
+                      ? { color: getTimelineTagColor(day.date) }
+                      : undefined
+                  }
+                  className={`mt-0.5 truncate text-[10px] leading-tight ${dayTag
                     ? active
                       ? 'font-semibold text-[#0E1F1A]/85'
-                      : pastOrNow
-                        ? 'text-[#8ACBB5]/80'
-                        : 'text-inkDim'
+                      : 'font-medium'
                     : 'text-transparent select-none'
                     }`}
                 >
-                  {day.tag ?? '·'}
+                  {dayTag ?? '·'}
                 </span>
               </button>
             );

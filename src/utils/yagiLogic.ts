@@ -1,11 +1,13 @@
-import type { CommuneYagiStatus, LayerToggles, RiverStationR2 } from '../types/yagi';
+import type { CommuneYagiStatus, Lang, LayerToggles, RiverStationR2 } from '../types/yagi';
 
 export interface TimelineDay {
   date: string;
   shortDate: string;
   displayDate: string;
   tag?: string;
+  tagEn?: string;
   summary: string;
+  summaryEn: string;
 }
 
 export const TIMELINE_DAYS: TimelineDay[] = [
@@ -14,76 +16,110 @@ export const TIMELINE_DAYS: TimelineDay[] = [
     shortDate: '05/09',
     displayDate: '05/09/2024',
     summary: 'Trước bão đổ bộ — theo dõi nền khí tượng thủy văn 12 tỉnh Bắc Bộ',
+    summaryEn: 'Pre-landfall baseline — monitoring hydro-met telemetry across 12 Northern provinces',
   },
   {
     date: '2024-09-06',
     shortDate: '06/09',
     displayDate: '06/09/2024',
     summary: 'Cảnh báo bão vào Biển Đông, chưa có xã vượt ngưỡng kích hoạt',
+    summaryEn: 'Typhoon enters East Sea — zero communes above parametric trigger thresholds',
   },
   {
     date: '2024-09-07',
     shortDate: '07/09',
     displayDate: '07/09/2024',
     tag: 'Đổ bộ',
+    tagEn: 'Landfall',
     summary: 'Bão đổ bộ Quảng Ninh – Hải Phòng: gió R50 (R3) kích hoạt 2.594 xã',
+    summaryEn: 'Quang Ninh – Hai Phong landfall: R50 wind band (R3) triggers 2,594 communes',
   },
   {
     date: '2024-09-08',
     shortDate: '08/09',
     displayDate: '08/09/2024',
     tag: 'Mưa R1',
+    tagEn: 'Rain R1',
     summary: 'Hoàn lưu gây mưa cực lớn >200mm/24h: thêm 1.070 xã chạm ngưỡng R1 (Đ.44 QĐ18)',
+    summaryEn: 'Extreme rainfall >200mm/24h: 1,070 communes cross R1 rule (Art.44 Dec.18)',
   },
   {
     date: '2024-09-09',
     shortDate: '09/09',
     displayDate: '09/09/2024',
     summary: 'Mưa tiếp diễn vùng núi & ĐBSH; kích hoạt quy trình chuẩn bị hồ sơ UBND xã',
+    summaryEn: 'Persistent highland & delta rainfall; preparing commune-level attestation batches',
   },
   {
     date: '2024-09-10',
     shortDate: '10/09',
     displayDate: '10/09/2024',
     summary: 'Thêm 98 xã vượt ngưỡng R1; lũ sông Cầu (Gia Bảy) & Thao (Bảo Hà, Yên Bái) > BĐ3',
+    summaryEn: '98 more communes trigger R1; Cau & Thao river gauges exceed Alarm Level 3',
   },
   {
     date: '2024-09-11',
     shortDate: '11/09',
     displayDate: '11/09/2024',
     tag: 'Đỉnh B5',
+    tagEn: 'B5 Peak',
     summary: '5 trạm thủy văn lớn (Lào Cai, Tuyên Quang, Vụ Quang, Chã, Phủ Lạng Thương) > BĐ3',
+    summaryEn: '5 major river gauges (Lao Cai, Tuyen Quang, Vu Quang, Cha, Phu Lang Thuong) > AL3',
   },
   {
     date: '2024-09-12',
     shortDate: '12/09',
     displayDate: '12/09/2024',
     tag: 'UNOSAT',
+    tagEn: 'UNOSAT',
     summary: 'Đáp Cầu & Phả Lại vượt BĐ3; ảnh vệ tinh UNOSAT 3966 ghi nhận 718 xã ngập ≥5%',
+    summaryEn: 'Dap Cau & Pha Lai exceed AL3; UNOSAT 3966 confirms 718 communes flooded ≥5%',
   },
   {
     date: '2024-09-13',
     shortDate: '13/09',
     displayDate: '13/09/2024',
     summary: 'Chốt đề nghị giãn nợ 1-Chạm & ngoại lệ trước hạn 10 ngày (TT 29/2025)',
+    summaryEn: 'Lock 1-tap deferral requests & AI-prioritized exceptions inside TT 29 10-day window',
   },
   {
     date: '2024-09-14',
     shortDate: '14/09',
     displayDate: '14/09/2024',
     summary: 'Khóa sổ kiểm toán NĐ 346/2026 & tổng hợp giữ Nhóm nợ 1 gửi NHNN',
+    summaryEn: 'Close Decree 346/2026 audit ledger & compile Group 1 debt retention report for SBV',
   },
 ];
 
-export const SHOWCASE_COMMUNES: Array<{ gid: string; label: string; tag: string }> = [
-  { gid: 'VNM.3.4.26_1', label: 'Vũ Xá (Bắc Giang)', tag: '84,9% · R1+R3' },
-  { gid: 'VNM.3.9.18_1', label: 'Trí Yên', tag: '80,2% · R1+R3' },
-  { gid: 'VNM.42.4.6_1', label: 'Gia Thủy (Ninh Bình)', tag: '76,1% · Ngoại lệ' },
-  { gid: 'VNM.22.3.12_1', label: 'Kênh Giang', tag: '69,3% · R1+R3' },
-  { gid: 'VNM.27.6.15_1', label: 'Nam Phương Tiến', tag: '43,9% · R3' },
-  { gid: 'VNM.49.7.1_1', label: 'Bạch Đằng', tag: 'Ngoài UNOSAT' },
-  { gid: 'VNM.3.1.2_1', label: 'Đa Mai', tag: '4,1% · Khô' },
+export const SHOWCASE_COMMUNES: Array<{
+  gid: string;
+  label: string;
+  tag: string;
+  tagEn: string;
+}> = [
+  { gid: 'VNM.3.4.26_1', label: 'Vũ Xá (Bắc Giang)', tag: '84,9% · R1+R3', tagEn: '84.9% · R1+R3' },
+  { gid: 'VNM.3.9.18_1', label: 'Trí Yên', tag: '80,2% · R1+R3', tagEn: '80.2% · R1+R3' },
+  { gid: 'VNM.42.4.6_1', label: 'Gia Thủy (Ninh Bình)', tag: '76,1% · Ngoại lệ', tagEn: '76.1% · Exception' },
+  { gid: 'VNM.22.3.12_1', label: 'Kênh Giang', tag: '69,3% · R1+R3', tagEn: '69.3% · R1+R3' },
+  { gid: 'VNM.27.6.15_1', label: 'Nam Phương Tiến', tag: '43,9% · R3', tagEn: '43.9% · R3' },
+  { gid: 'VNM.49.7.1_1', label: 'Bạch Đằng', tag: 'Ngoài UNOSAT', tagEn: 'Out of UNOSAT' },
+  { gid: 'VNM.3.1.2_1', label: 'Đa Mai', tag: '4,1% · Khô', tagEn: '4.1% · Dry' },
 ];
+
+/** Unified 4-pair palette (+ balanced violet overlap) for hazard layer tags, map polygons, and legends. */
+export const SIGNAL_COLORS = {
+  r1: '#ffb255',
+  r1Light: '#ffcd8e',
+  r2: '#8fd7d7',
+  r2Alert: '#f45f74',
+  r3R50: '#ff8ca1',
+  r3R64: '#f45f74',
+  unosat: '#00b0be',
+  unosatLight: '#8fd7d7',
+  s1: '#98c127',
+  s1Light: '#bdd373',
+  overlap: '#a78bfa',
+} as const;
 
 export interface CommuneSignalEval {
   r1On: boolean;
@@ -113,19 +149,19 @@ export function evaluateCommuneAtDate(
   let fillOpacity = 0.85;
 
   if (unosatFlood) {
-    fillColor = count > 0 ? '#0284C7' : '#0369A1';
+    fillColor = count > 0 ? SIGNAL_COLORS.unosatLight : SIGNAL_COLORS.unosat;
     fillOpacity = 0.92;
   } else if (s1Flood) {
-    fillColor = '#0D9488';
+    fillColor = SIGNAL_COLORS.s1;
     fillOpacity = 0.9;
   } else if (count === 2) {
-    fillColor = '#DC2626';
+    fillColor = SIGNAL_COLORS.overlap;
     fillOpacity = 0.88;
   } else if (r1On) {
-    fillColor = '#EA580C';
+    fillColor = SIGNAL_COLORS.r1;
     fillOpacity = 0.85;
   } else if (r3On) {
-    fillColor = layers.useR64 ? '#BE185D' : '#7C3AED';
+    fillColor = layers.useR64 ? SIGNAL_COLORS.r3R64 : SIGNAL_COLORS.r3R50;
     fillOpacity = 0.82;
   }
 
@@ -145,17 +181,30 @@ export function isStationActiveAtDate(s: RiverStationR2, dateStr: string): boole
   return s.r2_triggered === 1 && s.peak_time_ict.slice(0, 10) <= dateStr;
 }
 
-export function formatNum(n: number): string {
-  return Math.round(n).toLocaleString('vi-VN');
+export function formatNum(n: number, lang: Lang = 'vi'): string {
+  return Math.round(n).toLocaleString(lang === 'en' ? 'en-US' : 'vi-VN');
 }
 
-export function formatVndBillions(millionVnd: number): string {
+export function formatVndBillions(millionVnd: number, lang: Lang = 'vi'): string {
   const ty = millionVnd / 1000;
   const digits = ty < 100 ? 2 : 1;
-  return `${ty.toLocaleString('vi-VN', {
+  const formatted = ty.toLocaleString(lang === 'en' ? 'en-US' : 'vi-VN', {
     minimumFractionDigits: ty < 10 ? 1 : 0,
     maximumFractionDigits: digits,
-  })} tỷ đ`;
+  });
+  return lang === 'en' ? `${formatted}B VND` : `${formatted} tỷ đ`;
+}
+
+export function formatPct(n: number, lang: Lang = 'vi', digits = 1): string {
+  return `${n.toLocaleString(lang === 'en' ? 'en-US' : 'vi-VN', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })}%`;
+}
+
+export function formatDateLabel(dateStr: string, lang: Lang = 'vi'): string {
+  const [y, m, d] = dateStr.split('-');
+  return lang === 'en' ? `${y}-${m}-${d}` : `${d}/${m}/${y}`;
 }
 
 export interface ProvinceSummaryRow {

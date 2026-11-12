@@ -64,5 +64,7 @@ export interface LayerToggles {
   s1: boolean;
 }
 
-export type DrawerTab = 'bank' | 'ubnd' | 'exceptions' | 'stations' | 'api';
+export type Lang = 'vi' | 'en';
+
+export type DrawerTab = 'bank' | 'ai' | 'ubnd' | 'exceptions' | 'stations' | 'api';
 

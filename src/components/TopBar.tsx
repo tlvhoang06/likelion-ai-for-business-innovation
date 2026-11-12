@@ -1,22 +1,34 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Search, X } from 'lucide-react';
-import type { CommuneYagiStatus } from '../types/yagi';
-import { SHOWCASE_COMMUNES } from '../utils/yagiLogic';
+import { BookOpen, HelpCircle, Info, Search, X } from 'lucide-react';
+import type { CommuneYagiStatus, Lang } from '../types/yagi';
+import { formatNum, SHOWCASE_COMMUNES } from '../utils/yagiLogic';
 
 interface TopBarProps {
+  lang: Lang;
   communes: CommuneYagiStatus[];
   selectedGid: string | null;
   auditOpen?: boolean;
+  glossaryOpen?: boolean;
+  tourOpen?: boolean;
+  onChangeLang: (lang: Lang) => void;
   onSelectCommune: (gid: string | null) => void;
   onOpenAudit: () => void;
+  onOpenGlossary: () => void;
+  onOpenTour: () => void;
 }
 
 export function TopBar({
+  lang,
   communes,
   selectedGid,
   auditOpen = false,
+  glossaryOpen = false,
+  tourOpen = false,
+  onChangeLang,
   onSelectCommune,
   onOpenAudit,
+  onOpenGlossary,
+  onOpenTour,
 }: TopBarProps) {
   const [query, setQuery] = useState('');
   const [openSearch, setOpenSearch] = useState(false);
@@ -37,7 +49,7 @@ export function TopBar({
     if (!q) {
       return SHOWCASE_COMMUNES.map((s) => {
         const c = communes.find((x) => x.gid_3 === s.gid);
-        return c ? { commune: c, note: s.tag } : null;
+        return c ? { commune: c, note: lang === 'en' ? s.tagEn : s.tag } : null;
       }).filter(Boolean) as Array<{ commune: CommuneYagiStatus; note: string }>;
     }
     const found: Array<{ commune: CommuneYagiStatus; note: string }> = [];
@@ -49,13 +61,15 @@ export function TopBar({
           note:
             c.unosat_flood_pct !== null
               ? `UNOSAT ${c.unosat_flood_pct.toFixed(1)}%`
+              : lang === 'en'
+              ? 'Out of UNOSAT'
               : 'Ngoài vùng UNOSAT',
         });
         if (found.length >= 12) break;
       }
     }
     return found;
-  }, [communes, query]);
+  }, [communes, query, lang]);
 
   const currentCommune = useMemo(
     () => (selectedGid ? communes.find((c) => c.gid_3 === selectedGid) : undefined),
@@ -70,21 +84,23 @@ export function TopBar({
         </span>
         <span className="hidden text-lineStrong sm:inline">|</span>
         <span className="text-[12.5px] text-inkMuted">
-          Hạ tầng kích hoạt giãn nợ &amp; chi trả chỉ số thiên tai · 2.895 xã GADM v4.1
+          {lang === 'en'
+            ? `Disaster Credit Relief · ${formatNum(communes.length || 2895, 'en')} communes`
+            : 'Hạ tầng giãn nợ & chỉ số thiên tai · 2.895 xã'}
         </span>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {/* Commune Quick Search (dark canvas interior, mint button border only) */}
+        {/* Commune Quick Search */}
         <div ref={boxRef} className="relative">
           <div
-            className={`flex h-8 items-center gap-1.5 rounded-[6px] border bg-canvas px-2.5 transition-colors ${
+            className={`flex h-8 items-center gap-1.5 rounded-[4px] border bg-canvas px-2.5 transition-colors ${
               openSearch
-                ? 'border-[#CDECD7]'
-                : 'border-[#8ACBB5] hover:border-[#CDECD7]'
+                ? 'border-inkDim'
+                : 'border-lineStrong hover:border-inkDim'
             }`}
           >
-            <Search className="h-3.5 w-3.5 text-[#8ACBB5]" strokeWidth={1.75} />
+            <Search className="h-3.5 w-3.5 text-inkDim" strokeWidth={1.75} />
             <input
               type="text"
               value={query}
@@ -95,7 +111,9 @@ export function TopBar({
               }}
               placeholder={
                 currentCommune
-                  ? `Đang xem: ${currentCommune.name} (${currentCommune.province})`
+                  ? `${lang === 'en' ? 'Viewing' : 'Đang xem'}: ${currentCommune.name} (${currentCommune.province})`
+                  : lang === 'en'
+                  ? 'Search commune, district, province (2,895)...'
                   : 'Tìm xã, huyện, tỉnh (2.895 xã)...'
               }
               className="w-[210px] bg-transparent text-[12.5px] text-ink placeholder:text-inkDim focus:outline-none sm:w-[245px]"
@@ -110,8 +128,24 @@ export function TopBar({
                   }
                 }}
                 className="text-inkDim hover:text-ink"
-                aria-label={query ? 'Xóa tìm kiếm' : 'Thoát chọn xã về tổng quan'}
-                title={query ? 'Xóa chữ tìm kiếm' : 'Thoát chọn xã về tổng quan'}
+                aria-label={
+                  query
+                    ? lang === 'en'
+                      ? 'Clear search'
+                      : 'Xóa tìm kiếm'
+                    : lang === 'en'
+                    ? 'Exit to regional overview'
+                    : 'Thoát chọn xã về tổng quan'
+                }
+                title={
+                  query
+                    ? lang === 'en'
+                      ? 'Clear search text'
+                      : 'Xóa chữ tìm kiếm'
+                    : lang === 'en'
+                    ? 'Exit to regional overview'
+                    : 'Thoát chọn xã về tổng quan'
+                }
               >
                 <X className="h-3 w-3" />
               </button>
@@ -123,7 +157,11 @@ export function TopBar({
               <div className="flex items-center justify-between border-b border-line px-3 py-1.5 text-[11px] font-medium text-inkDim">
                 <span>
                   {query.trim()
-                    ? `Kết quả lọc (${matches.length} xã)`
+                    ? lang === 'en'
+                      ? `Filtered (${matches.length} communes)`
+                      : `Kết quả lọc (${matches.length} xã)`
+                    : lang === 'en'
+                    ? 'Typhoon Yagi Benchmark Communes'
                     : 'Xã trọng điểm đối chứng Bão Yagi'}
                 </span>
                 {selectedGid && (
@@ -135,14 +173,16 @@ export function TopBar({
                     }}
                     className="text-inkMuted hover:text-ink"
                   >
-                    Về tổng quan
+                    {lang === 'en' ? 'Overview' : 'Về tổng quan'}
                   </button>
                 )}
               </div>
               <div className="max-h-[280px] overflow-y-auto py-1">
                 {matches.length === 0 ? (
                   <div className="px-3 py-2 text-[12px] text-inkMuted">
-                    Không tìm thấy xã phù hợp trong 2.895 xã Bắc Bộ.
+                    {lang === 'en'
+                      ? 'No matching commune found across 2,895 communes.'
+                      : 'Không tìm thấy xã phù hợp trong 2.895 xã Bắc Bộ.'}
                   </div>
                 ) : (
                   matches.map(({ commune, note }) => {
@@ -194,22 +234,85 @@ export function TopBar({
           )}
         </div>
 
-        <span className="hidden h-8 items-center rounded-[6px] border border-[#8ACBB5]/70 bg-[#CDECD7] px-2.5 font-mono text-[11.5px] font-semibold text-[#0E1F1A] xl:inline-flex">
-          TT 29/2025 · 10 ngày
+        <span className="hidden h-8 items-center rounded-[4px] border border-lineStrong bg-canvas px-2.5 font-mono text-[11px] font-medium text-inkMuted xl:inline-flex">
+          {lang === 'en' ? 'Circ. 29/2025 · 10 days' : 'TT 29/2025 · 10 ngày'}
         </span>
 
-        <button
-          type="button"
-          onClick={onOpenAudit}
-          className={`inline-flex h-8 items-center gap-1.5 rounded-[6px] border px-2.5 text-[12px] font-semibold transition-colors ${
-            auditOpen
-              ? 'border-[#8ACBB5] bg-[#8ACBB5] text-[#0E1F1A] shadow-sm'
-              : 'border-[#8ACBB5]/70 bg-[#CDECD7] text-[#0E1F1A] hover:bg-[#D8F1E0]'
-          }`}
-        >
-          <BookOpen className="h-3.5 w-3.5" strokeWidth={1.9} />
-          <span>Kiểm chứng &amp; Pháp lý</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Bilingual VI / EN Switcher */}
+          <div
+            role="group"
+            aria-label={lang === 'en' ? 'Interface language' : 'Ngôn ngữ giao diện'}
+            className="inline-flex h-8 items-center rounded-[4px] border border-lineStrong bg-canvas p-0.5 font-mono text-[11px]"
+          >
+            {(['vi', 'en'] as const).map((code) => {
+              const active = lang === code;
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => onChangeLang(code)}
+                  className={`inline-flex h-full items-center rounded-[3px] px-2 font-semibold uppercase transition-colors ${
+                    active
+                      ? 'bg-[#263042] text-ink'
+                      : 'text-inkDim hover:text-inkMuted'
+                  }`}
+                >
+                  {code}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={onOpenGlossary}
+            title={
+              lang === 'en'
+                ? 'Explain R1, R2, R3, UNOSAT, Sentinel-1 and Group 1 terms'
+                : 'Giải thích ý nghĩa R1, R2, R3, UNOSAT, Sentinel-1 và Nhóm nợ 1'
+            }
+            className={`inline-flex h-8 items-center gap-1.5 rounded-[4px] border px-2.5 text-[12px] font-medium transition-colors ${
+              glossaryOpen
+                ? 'border-[#8ACBB5] bg-[#162723] text-[#CDECD7]'
+                : 'border-lineStrong bg-canvas text-inkMuted hover:border-inkDim hover:text-ink'
+            }`}
+          >
+            <Info className="h-3.5 w-3.5" strokeWidth={1.85} />
+            <span>{lang === 'en' ? 'Signal Guide' : 'Giải thích chỉ số'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenAudit}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-[4px] px-2.5 text-[12px] font-semibold transition-colors ${
+              auditOpen
+                ? 'bg-[#8ACBB5] text-[#0E1F1A]'
+                : 'bg-[#CDECD7] text-[#0E1F1A] hover:bg-[#D8F1E0]'
+            }`}
+          >
+            <BookOpen className="h-3.5 w-3.5" strokeWidth={1.9} />
+            <span>{lang === 'en' ? 'Validation & Legal' : 'Kiểm chứng & Pháp lý'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenTour}
+            title={
+              lang === 'en'
+                ? 'Start interactive guided tour'
+                : 'Mở hướng dẫn từng bước sử dụng hệ thống'
+            }
+            className={`inline-flex h-8 items-center gap-1.5 rounded-[4px] border px-2.5 text-[12px] font-medium transition-colors ${
+              tourOpen
+                ? 'border-inkDim bg-[#263042] text-ink'
+                : 'border-lineStrong bg-canvas text-inkMuted hover:border-inkDim hover:text-ink'
+            }`}
+          >
+            <HelpCircle className="h-3.5 w-3.5" strokeWidth={1.85} />
+            <span>{lang === 'en' ? 'Tour' : 'Hướng dẫn'}</span>
+          </button>
+        </div>
       </div>
     </header>
   );

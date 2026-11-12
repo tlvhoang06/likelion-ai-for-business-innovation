@@ -3,25 +3,47 @@ import type {
   CommunesGeoJson,
   CommuneYagiStatus,
   DrawerTab,
+  Lang,
   LayerToggles,
   RiverStationR2,
 } from './types/yagi';
 import {
   evaluateCommuneAtDate,
+  formatNum,
   SHOWCASE_COMMUNES,
   TIMELINE_DAYS,
 } from './utils/yagiLogic';
+import {
+  buildAiAssessmentMap,
+  computeWhatIfComparison,
+  type AiWorkspaceAction,
+} from './utils/aiRiskEngine';
 import { TopBar } from './components/TopBar';
 import { YagiMap } from './components/YagiMap';
 import { TimelineDock } from './components/TimelineDock';
 import { OperationalDrawer } from './components/OperationalDrawer';
 import { VerificationModal } from './components/VerificationModal';
+import { SignalGlossaryModal } from './components/SignalGlossaryModal';
 import {
   DeferralConfirmModal,
   type PendingDeferralConfirm,
 } from './components/DeferralConfirmModal';
+import {
+  SpotlightWalkthrough,
+  WALKTHROUGH_STEPS,
+} from './components/SpotlightWalkthrough';
+
+const DEMO_TOUR_COMMUNE_GID = 'VNM.3.4.26_1';
+const DEFAULT_LAYERS: LayerToggles = {
+  r1: true,
+  r3: true,
+  useR64: false,
+  unosat: false,
+  s1: false,
+};
 
 export default function App() {
+  const [lang, setLang] = useState<Lang>('vi');
   const [communes, setCommunes] = useState<CommuneYagiStatus[]>([]);
   const [geojson, setGeojson] = useState<CommunesGeoJson | null>(null);
   const [stations, setStations] = useState<RiverStationR2[]>([]);
@@ -30,22 +52,33 @@ export default function App() {
   const [selectedGid, setSelectedGid] = useState<string | null>(null);
   const [dayIdx, setDayIdx] = useState<number>(3); // 2024-09-08 default storm rainfall peak
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [layers, setLayers] = useState<LayerToggles>({
-    r1: true,
-    r3: true,
-    useR64: false,
-    unosat: false,
-    s1: false,
-  });
+  const [layers, setLayers] = useState<LayerToggles>(DEFAULT_LAYERS);
 
   const [activeTab, setActiveTab] = useState<DrawerTab>('bank');
+  const [aiThreshold, setAiThreshold] = useState<number>(55);
+  const [aiHighlightedGids, setAiHighlightedGids] = useState<string[]>([]);
+  const [aiFocusSignal, setAiFocusSignal] = useState<{
+    gids: string[];
+    seq: number;
+  } | null>(null);
   const [campaignLaunched, setCampaignLaunched] = useState<boolean>(false);
   const [borrowerConfirmed, setBorrowerConfirmed] = useState<Record<string, boolean>>({});
   const [ubndSigned, setUbndSigned] = useState<Record<string, boolean>>({});
   const [exceptionsResolved, setExceptionsResolved] = useState<Record<string, boolean>>({});
   const [auditOpen, setAuditOpen] = useState<boolean>(false);
+  const [glossaryOpen, setGlossaryOpen] = useState<boolean>(false);
   const [pendingDeferral, setPendingDeferral] =
     useState<PendingDeferralConfirm | null>(null);
+  // Always open guided tour on page entry so every visitor gets an immediate walkthrough; Exit (Esc) closes cleanly for the active session
+  const [tourOpen, setTourOpen] = useState<boolean>(true);
+  const [tourStepIdx, setTourStepIdx] = useState<number>(0);
+
+  useEffect(() => {
+    document.title =
+      lang === 'en'
+        ? 'KipThoi — AI Geospatial Credit Triage · Typhoon Yagi Backtest'
+        : 'KipThoi — Điều phối Tín dụng AI theo Địa không gian · Backtest Bão Yagi';
+  }, [lang]);
 
   // Load verified static datasets
   useEffect(() => {
@@ -84,8 +117,13 @@ export default function App() {
   useEffect(() => {
     function handleEsc(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        if (tourOpen) {
+          return;
+        }
         if (pendingDeferral) {
           setPendingDeferral(null);
+        } else if (glossaryOpen) {
+          setGlossaryOpen(false);
         } else if (auditOpen) {
           setAuditOpen(false);
         } else {
@@ -95,7 +133,99 @@ export default function App() {
     }
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [pendingDeferral, auditOpen]);
+  }, [tourOpen, pendingDeferral, glossaryOpen, auditOpen]);
+
+  const dataReady = Boolean(geojson && communes.length > 0);
+
+  // Synchronize interactive app state for each guided walkthrough step (toggling R1/R3 layers, clicking a province/commune, opening UBND brief & legal modal)
+  useEffect(() => {
+    if (!tourOpen || !dataReady) return;
+    const step = WALKTHROUGH_STEPS[tourStepIdx];
+    if (!step) return;
+
+    const timers: number[] = [];
+
+    if (step.id === 'map') {
+      setAuditOpen(false);
+      setPendingDeferral(null);
+      setSelectedGid(null);
+      setActiveTab('bank');
+      setLayers({ r1: false, r3: false, useR64: false, unosat: false, s1: false });
+      timers.push(
+        window.setTimeout(() => {
+          setLayers((prev) => ({ ...prev, r1: true }));
+        }, 450),
+        window.setTimeout(() => {
+          setLayers((prev) => ({ ...prev, r3: true }));
+        }, 1350),
+        window.setTimeout(() => {
+          setLayers((prev) => ({ ...prev, unosat: true }));
+        }, 2250),
+        window.setTimeout(() => {
+          setLayers((prev) => ({ ...prev, s1: true }));
+        }, 3150)
+      );
+    } else if (step.id === 'drill') {
+      setAuditOpen(false);
+      setLayers(DEFAULT_LAYERS);
+      setActiveTab('bank');
+      setSelectedGid(DEMO_TOUR_COMMUNE_GID);
+    } else if (step.id === 'timeline') {
+      setAuditOpen(false);
+      setSelectedGid(null);
+      setLayers(DEFAULT_LAYERS);
+      setActiveTab('bank');
+    } else if (step.id === 'deferral') {
+      setAuditOpen(false);
+      setSelectedGid(null);
+      setActiveTab('bank');
+    } else if (step.id === 'ai') {
+      setAuditOpen(false);
+      setSelectedGid(null);
+      setActiveTab('ai');
+    } else if (step.id === 'ubnd-brief') {
+      setAuditOpen(false);
+      setActiveTab('ubnd');
+      setSelectedGid(null);
+      timers.push(
+        window.setTimeout(() => {
+          setSelectedGid(DEMO_TOUR_COMMUNE_GID);
+        }, 1400)
+      );
+    } else if (step.id === 'legal') {
+      setSelectedGid(null);
+      setActiveTab('bank');
+      setAuditOpen(true);
+    }
+
+    return () => {
+      timers.forEach((t) => window.clearTimeout(t));
+    };
+  }, [tourOpen, tourStepIdx, dataReady]);
+
+  const handleChangeTourStep = (nextIdx: number) => {
+    const clamped = Math.max(0, Math.min(WALKTHROUGH_STEPS.length - 1, nextIdx));
+    setTourStepIdx(clamped);
+  };
+
+  const handleOpenTour = () => {
+    setAuditOpen(false);
+    setGlossaryOpen(false);
+    setPendingDeferral(null);
+    setSelectedGid(null);
+    setActiveTab('bank');
+    setTourStepIdx(0);
+    setTourOpen(true);
+  };
+
+  const handleCloseTour = () => {
+    setTourOpen(false);
+    setAuditOpen(false);
+    setGlossaryOpen(false);
+    setSelectedGid(null);
+    setActiveTab('bank');
+    setLayers(DEFAULT_LAYERS);
+  };
 
   // Auto-playback for timeline scrubber
   useEffect(() => {
@@ -157,6 +287,13 @@ export default function App() {
     [communeMap, selectedGid]
   );
 
+  const assessments = useMemo(() => buildAiAssessmentMap(communes), [communes]);
+
+  const whatIf = useMemo(
+    () => computeWhatIfComparison(communes, assessments, aiThreshold),
+    [communes, assessments, aiThreshold]
+  );
+
   const handleToggleLayer = (key: keyof LayerToggles) => {
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
   };
@@ -192,12 +329,47 @@ export default function App() {
     setPendingDeferral(null);
   };
 
+  const handleApplyAiAction = (action: AiWorkspaceAction) => {
+    if (action.dateStr) {
+      const idx = TIMELINE_DAYS.findIndex((d) => d.date === action.dateStr);
+      if (idx >= 0) {
+        setIsPlaying(false);
+        setDayIdx(idx);
+      }
+    }
+    if (action.layers) {
+      setLayers((prev) => ({ ...prev, ...action.layers }));
+    }
+    if (typeof action.threshold === 'number') {
+      setAiThreshold(Math.max(45, Math.min(85, Math.round(action.threshold))));
+    }
+    if (action.highlightGids !== undefined) {
+      setAiHighlightedGids(action.highlightGids);
+    }
+    if (action.selectGid !== undefined) {
+      setSelectedGid(action.selectGid);
+    }
+    if (action.focusGids && action.focusGids.length > 0 && !action.selectGid) {
+      setAiFocusSignal((prev) => ({
+        gids: action.focusGids!,
+        seq: (prev?.seq ?? 0) + 1,
+      }));
+    }
+    if (action.switchTab) {
+      setActiveTab(action.switchTab);
+    }
+  };
+
+  const isEn = lang === 'en';
+
   if (loadError) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas p-6 text-ink">
         <div className="max-w-md rounded-[4px] border border-[#5B2121] bg-panel p-5">
           <div className="text-[14px] font-semibold text-[#F87171]">
-            Không thể khởi tạo dữ liệu Bão Yagi
+            {isEn
+              ? 'Unable to initialize Typhoon Yagi datasets'
+              : 'Không thể khởi tạo dữ liệu Bão Yagi'}
           </div>
           <p className="mt-1.5 text-[12.5px] text-inkMuted">{loadError}</p>
         </div>
@@ -208,7 +380,9 @@ export default function App() {
   if (!geojson || communes.length === 0) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas text-[13px] text-inkMuted">
-        Đang nạp lớp bản đồ 2.895 xã GADM v4.1 và 11 trạm thủy văn B5...
+        {isEn
+          ? 'Loading 2,895 GADM v4.1 communes and 11 B5 hydrological gauges...'
+          : 'Đang nạp lớp bản đồ 2.895 xã GADM v4.1 và 11 trạm thủy văn B5...'}
       </div>
     );
   }
@@ -216,28 +390,52 @@ export default function App() {
   return (
     <div className="flex min-h-screen w-full max-w-full flex-col overflow-x-hidden bg-canvas text-ink lg:h-screen lg:overflow-hidden">
       <TopBar
+        lang={lang}
         communes={communes}
         selectedGid={selectedGid}
         auditOpen={auditOpen}
+        glossaryOpen={glossaryOpen}
+        tourOpen={tourOpen}
+        onChangeLang={setLang}
         onSelectCommune={setSelectedGid}
-        onOpenAudit={() => setAuditOpen(true)}
+        onOpenAudit={() => {
+          setGlossaryOpen(false);
+          setAuditOpen(true);
+        }}
+        onOpenGlossary={() => {
+          setAuditOpen(false);
+          setGlossaryOpen(true);
+        }}
+        onOpenTour={handleOpenTour}
       />
 
       {/* Quick Showcase Anchor Strip with instant Overview reset + toggle off */}
-      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-lineStrong bg-[#13171F] px-4 py-1.5 text-[11.5px]">
+      <div
+        data-tour="showcase-bar"
+        className="flex items-center gap-1.5 overflow-x-auto border-b border-lineStrong bg-[#13171F] px-4 py-1.5 text-[11.5px]"
+      >
         <button
           type="button"
-          onClick={() => setSelectedGid(null)}
+          onClick={() => {
+            setSelectedGid(null);
+            setAiHighlightedGids([]);
+          }}
           className={`inline-flex shrink-0 items-center gap-1.5 rounded-[5px] border px-2.5 py-0.5 font-medium transition-colors ${
             selectedGid === null
               ? 'border-[#8ACBB5] bg-[#8ACBB5] font-semibold text-[#0E1F1A] shadow-sm'
               : 'border-line bg-transparent text-inkMuted hover:border-[#8ACBB5]/60 hover:text-ink'
           }`}
         >
-          <span>Toàn vùng (2.895 xã)</span>
+          <span>
+            {isEn
+              ? `All 12 Provinces (${formatNum(communes.length, lang)})`
+              : `Toàn vùng (${formatNum(communes.length, lang)} xã)`}
+          </span>
         </button>
         <span className="h-3.5 w-[1px] shrink-0 bg-line" />
-        <span className="shrink-0 text-inkDim">Điểm đối chứng:</span>
+        <span className="shrink-0 text-inkDim">
+          {isEn ? 'Benchmarks:' : 'Điểm đối chứng:'}
+        </span>
         {SHOWCASE_COMMUNES.map((s) => {
           const active = s.gid === selectedGid;
           return (
@@ -247,7 +445,15 @@ export default function App() {
               onClick={() =>
                 setSelectedGid((prev) => (prev === s.gid ? null : s.gid))
               }
-              title={active ? 'Bấm lại để thoát về Tổng quan' : 'Bấm để phóng tới xã'}
+              title={
+                active
+                  ? isEn
+                    ? 'Click again to return to Regional Overview'
+                    : 'Bấm lại để thoát về Tổng quan'
+                  : isEn
+                  ? 'Click to fly map to commune'
+                  : 'Bấm để phóng tới xã'
+              }
               className={`inline-flex shrink-0 items-center gap-1.5 rounded-[5px] border px-2.5 py-0.5 transition-colors ${
                 active
                   ? 'border-[#8ACBB5] bg-[#8ACBB5] font-semibold text-[#0E1F1A] shadow-sm'
@@ -260,7 +466,7 @@ export default function App() {
                   active ? 'font-semibold text-[#0E1F1A]/80' : 'text-inkDim'
                 }`}
               >
-                {s.tag}
+                {isEn ? s.tagEn : s.tag}
               </span>
               {active && (
                 <span className="ml-0.5 text-[11px] font-semibold text-[#0E1F1A]/80">
@@ -276,9 +482,12 @@ export default function App() {
       <main className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <section className="flex min-h-0 min-w-0 flex-1 flex-col">
           <YagiMap
+            lang={lang}
             geojson={geojson}
             communeMap={communeMap}
             selectedGid={selectedGid}
+            aiHighlightedGids={aiHighlightedGids}
+            aiFocusSignal={aiFocusSignal}
             dateStr={currentDay.date}
             layers={layers}
             stats={stats}
@@ -286,10 +495,12 @@ export default function App() {
             borrowerConfirmed={borrowerConfirmed}
             ubndSigned={ubndSigned}
             onSelectCommune={setSelectedGid}
+            onClearAiHighlights={() => setAiHighlightedGids([])}
             onToggleLayer={handleToggleLayer}
             onSelectWindMode={handleSelectWindMode}
           />
           <TimelineDock
+            lang={lang}
             dayIdx={dayIdx}
             isPlaying={isPlaying}
             campaignLaunched={campaignLaunched}
@@ -303,18 +514,26 @@ export default function App() {
         </section>
 
         <OperationalDrawer
+          lang={lang}
           communes={communes}
           stations={stations}
           selectedCommune={selectedCommune}
           dateStr={currentDay.date}
           layers={layers}
           stats={stats}
+          assessments={assessments}
+          aiThreshold={aiThreshold}
+          whatIf={whatIf}
           activeTab={activeTab}
           campaignLaunched={campaignLaunched}
           borrowerConfirmed={borrowerConfirmed}
           ubndSigned={ubndSigned}
           exceptionsResolved={exceptionsResolved}
+          aiHighlightedCount={aiHighlightedGids.length}
+          onApplyAiAction={handleApplyAiAction}
+          onClearAiHighlights={() => setAiHighlightedGids([])}
           onChangeTab={setActiveTab}
+          onChangeAiThreshold={setAiThreshold}
           onSelectCommune={setSelectedGid}
           onJumpToFloodPeak={() => {
             setIsPlaying(false);
@@ -332,6 +551,7 @@ export default function App() {
       </main>
 
       <DeferralConfirmModal
+        lang={lang}
         pending={pendingDeferral}
         dateStr={currentDay.date}
         totalCommunes={communes.length}
@@ -341,9 +561,27 @@ export default function App() {
       />
 
       <VerificationModal
+        lang={lang}
         open={auditOpen}
-        onClose={() => setAuditOpen(false)}
+        onClose={() => {
+          if (tourOpen) handleCloseTour();
+          else setAuditOpen(false);
+        }}
         communes={communes}
+      />
+
+      <SignalGlossaryModal
+        lang={lang}
+        open={glossaryOpen}
+        onClose={() => setGlossaryOpen(false)}
+      />
+
+      <SpotlightWalkthrough
+        lang={lang}
+        open={tourOpen && dataReady}
+        stepIdx={tourStepIdx}
+        onChangeStep={handleChangeTourStep}
+        onClose={handleCloseTour}
       />
     </div>
   );

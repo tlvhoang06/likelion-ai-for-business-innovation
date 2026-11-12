@@ -1,8 +1,16 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Check, Copy, FileCheck2, ShieldAlert, Waves } from 'lucide-react';
+import {
+  ArrowLeft,
+  Check,
+  Copy,
+  FileCheck2,
+  SlidersHorizontal,
+  Waves,
+} from 'lucide-react';
 import type {
   CommuneYagiStatus,
   DrawerTab,
+  Lang,
   LayerToggles,
   RiverStationR2,
 } from '../types/yagi';
@@ -10,11 +18,21 @@ import {
   computeProvinceStats,
   evaluateCommuneAtDate,
   formatNum,
+  formatPct,
   formatVndBillions,
   isStationActiveAtDate,
+  SIGNAL_COLORS,
 } from '../utils/yagiLogic';
+import {
+  filterAiExceptionQueue,
+  type CommuneAiAssessment,
+  type WhatIfSummary,
+  type AiWorkspaceAction,
+} from '../utils/aiRiskEngine';
+import { AiCopilotPanel } from './AiCopilotPanel';
 
 interface OperationalDrawerProps {
+  lang: Lang;
   communes: CommuneYagiStatus[];
   stations: RiverStationR2[];
   selectedCommune: CommuneYagiStatus | null;
@@ -28,54 +46,72 @@ interface OperationalDrawerProps {
     triggeredDebtM: number;
     savedLoans: number;
   };
+  assessments: Map<string, CommuneAiAssessment>;
+  aiThreshold: number;
+  whatIf: WhatIfSummary;
   activeTab: DrawerTab;
   campaignLaunched: boolean;
   borrowerConfirmed: Record<string, boolean>;
   ubndSigned: Record<string, boolean>;
   exceptionsResolved: Record<string, boolean>;
   onChangeTab: (tab: DrawerTab) => void;
+  onChangeAiThreshold: (v: number) => void;
   onSelectCommune: (gid: string | null) => void;
   onJumpToFloodPeak: () => void;
   onLaunchCampaign: () => void;
   onConfirmBorrower: (gid: string) => void;
   onSignUbnd: (gid: string) => void;
   onResolveException: (gid: string) => void;
+  aiHighlightedCount?: number;
+  onApplyAiAction: (action: AiWorkspaceAction) => void;
+  onClearAiHighlights?: () => void;
 }
 
-const DRAWER_TABS: Array<{ id: DrawerTab; label: string }> = [
-  { id: 'bank', label: 'Giãn nợ nhanh' },
-  { id: 'ubnd', label: 'UBND Xã' },
-  { id: 'exceptions', label: 'Duyệt ngoại lệ' },
-  { id: 'stations', label: 'Mực nước lũ' },
-  { id: 'api', label: 'Báo cáo & API' },
+const DRAWER_TABS: Array<{ id: DrawerTab; vi: string; en: string }> = [
+  { id: 'bank', vi: 'Giãn nợ', en: 'Deferral' },
+  { id: 'ai', vi: 'Trợ lý AI', en: 'AI Assistant' },
+  { id: 'ubnd', vi: 'UBND Xã', en: 'Commune' },
+  { id: 'exceptions', vi: 'Ngoại lệ', en: 'Exceptions' },
+  { id: 'stations', vi: 'Mực nước', en: 'Rivers' },
+  { id: 'api', vi: 'API', en: 'API' },
 ];
 
 export function OperationalDrawer({
+  lang,
   communes,
   stations,
   selectedCommune: c,
   dateStr,
   layers,
   stats,
+  assessments,
+  aiThreshold,
+  whatIf,
   activeTab,
   campaignLaunched,
   borrowerConfirmed,
   ubndSigned,
   exceptionsResolved,
   onChangeTab,
+  onChangeAiThreshold,
   onSelectCommune,
   onJumpToFloodPeak,
   onLaunchCampaign,
   onConfirmBorrower,
   onSignUbnd,
   onResolveException,
+  aiHighlightedCount = 0,
+  onApplyAiAction,
+  onClearAiHighlights,
 }: OperationalDrawerProps) {
   const [copiedJson, setCopiedJson] = useState(false);
 
   const signalEval = c ? evaluateCommuneAtDate(c, dateStr, layers) : null;
+  const selectedAi = c ? assessments.get(c.gid_3) ?? null : null;
   const isConfirmed = c ? !!(borrowerConfirmed[c.gid_3] || campaignLaunched) : campaignLaunched;
   const isUbndSigned = c ? !!ubndSigned[c.gid_3] : false;
   const isExResolved = c ? !!exceptionsResolved[c.gid_3] : false;
+  const displayDate = lang === 'en' ? dateStr : dateStr.split('-').reverse().join('/');
 
   const hotspotCommunes = useMemo(
     () =>
@@ -86,17 +122,12 @@ export function OperationalDrawer({
     [communes]
   );
 
-  // Authentic W3 exception queue computed dynamically from 2,895 communes
-  const exceptionList = useMemo(() => {
-    const missR1 = communes
-      .filter((x) => x.unosat_label === 1 && !x.r1)
-      .sort((a, b) => (b.unosat_flood_pct ?? 0) - (a.unosat_flood_pct ?? 0))
-      .slice(0, 6);
-    const outside = communes
-      .filter((x) => x.unosat_status !== 'CLASSIFIABLE' && (x.r1 || x.r3_r50))
-      .slice(0, 3);
-    return [...missR1, ...outside];
-  }, [communes]);
+  // AI-ranked W3 exception queue dynamically synced with aiThreshold slider
+  const exceptionSummary = useMemo(
+    () => filterAiExceptionQueue(communes, assessments, aiThreshold, 40),
+    [communes, assessments, aiThreshold]
+  );
+  const exceptionQueue = exceptionSummary.items;
 
   const provinceStats = useMemo(() => computeProvinceStats(communes), [communes]);
 
@@ -107,6 +138,7 @@ export function OperationalDrawer({
         audit_retention_years: 5,
         payout_sla_business_days: 15,
         applicable_decrees: ['ND_346_2026', 'TT_29_2025_TT_NHNN', 'ND_86_2024'],
+        privacy_guard: 'ZERO_PII_COMMUNE_GID3_ONLY',
         scope: 'REGIONAL_OVERVIEW_12_PROVINCES',
         total_communes: communes.length,
         observed_date: dateStr,
@@ -114,6 +146,13 @@ export function OperationalDrawer({
         r1_triggered_communes: stats.r1Count,
         r3_triggered_communes: stats.r3Count,
         r2_river_stations_bd3: stations.filter((s) => isStationActiveAtDate(s, dateStr)).length,
+        ai_triage_whatif: {
+          score_threshold: whatIf.threshold,
+          baseline_r1_recall_pct: Number(whatIf.baselineRecallPct.toFixed(1)),
+          ai_assisted_recall_pct: Number(whatIf.aiRecallPct.toFixed(1)),
+          extra_flooded_communes_flagged: whatIf.aiExtraFloodedCaught,
+          outside_unosat_candidates: whatIf.outsideBlindSpotFlagged,
+        },
         simulated_portfolio_loans: stats.triggeredLoans,
         campaign_1tap_dispatched: campaignLaunched,
       };
@@ -124,6 +163,7 @@ export function OperationalDrawer({
       audit_retention_years: 5,
       payout_sla_business_days: 15,
       applicable_decrees: ['ND_346_2026', 'TT_29_2025_TT_NHNN', 'ND_86_2024'],
+      privacy_guard: 'ZERO_PII_COMMUNE_GID3_ONLY',
       commune: {
         gid_3: c.gid_3,
         name: c.name,
@@ -153,18 +193,33 @@ export function OperationalDrawer({
         unosat_flood_pct: c.unosat_flood_pct,
         sentinel1_flood_pct: c.s1_flood_pct,
       },
+      ai_basis_risk_triage: selectedAi
+        ? {
+            score: selectedAi.score,
+            tier: selectedAi.tier,
+            basis_risk_miss_r1: selectedAi.isBasisRiskMiss,
+            outside_scan_candidate: selectedAi.isBlindSpotCandidate,
+            human_approval_required: true,
+          }
+        : null,
       borrower_consent_1tap: isConfirmed,
       ubnd_batch_attestation: isUbndSigned,
     };
   }, [
     c,
     signalEval,
+    selectedAi,
     communes.length,
     dateStr,
     stats.triggeredCount,
     stats.r1Count,
     stats.r3Count,
     stats.triggeredLoans,
+    whatIf.threshold,
+    whatIf.baselineRecallPct,
+    whatIf.aiRecallPct,
+    whatIf.aiExtraFloodedCaught,
+    whatIf.outsideBlindSpotFlagged,
     campaignLaunched,
     layers.useR64,
     stations,
@@ -183,17 +238,41 @@ export function OperationalDrawer({
   };
 
   const isFloodPeak = dateStr === '2024-09-12';
+  const isEn = lang === 'en';
 
   return (
-    <aside className="flex w-full shrink-0 flex-col border-t border-lineStrong bg-panel lg:w-[460px] lg:border-l lg:border-t-0 xl:w-[480px]">
+    <aside
+      data-tour="drawer-panel"
+      className="flex w-full shrink-0 flex-col border-t border-lineStrong bg-panel lg:w-[460px] lg:border-l lg:border-t-0 xl:w-[480px]"
+    >
       {/* Selected Commune OR Regional Overview Header */}
       {c && signalEval ? (
         <div className="border-b border-lineStrong px-4 py-3.5">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h2 className="truncate text-[15px] font-semibold text-ink">
-                Xã {c.name}
-              </h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="truncate text-[15px] font-semibold text-ink">
+                  {isEn ? `${c.name} Commune` : `Xã ${c.name}`}
+                </h2>
+                {selectedAi && (
+                  <button
+                    type="button"
+                    onClick={() => onChangeTab('exceptions')}
+                    title={
+                      isEn
+                        ? 'Open threshold filter & score breakdown in Exceptions'
+                        : 'Bấm để mở điểm rủi ro & bộ lọc trong tab Ngoại lệ'
+                    }
+                    className="inline-flex items-center rounded-[4px] border border-lineStrong bg-canvas px-1.5 py-0.5 font-mono text-[10.5px] font-semibold text-inkMuted transition-colors hover:border-inkDim hover:text-ink"
+                  >
+                    <span>
+                      {isEn
+                        ? `Triage ${selectedAi.score}/100`
+                        : `Ưu tiên rà ${selectedAi.score}/100`}
+                    </span>
+                  </button>
+                )}
+              </div>
               <div className="mt-0.5 truncate text-[12px] text-inkMuted">
                 {c.district}, {c.province} &middot;{' '}
                 <span className="font-mono text-inkDim">{c.gid_3}</span>
@@ -204,22 +283,26 @@ export function OperationalDrawer({
               <button
                 type="button"
                 onClick={onJumpToFloodPeak}
-                className={`inline-flex h-7 items-center rounded-[5px] px-2.5 text-[11.5px] font-semibold transition-colors ${
+                className={`inline-flex h-7 items-center rounded-[4px] px-2.5 text-[11.5px] font-semibold transition-colors ${
                   isFloodPeak
-                    ? 'bg-[#8ACBB5] text-[#0E1F1A] shadow-sm'
+                    ? 'bg-[#8ACBB5] text-[#0E1F1A]'
                     : 'bg-[#CDECD7] text-[#0E1F1A] hover:bg-[#D8F1E0]'
                 }`}
               >
-                Đỉnh lũ 12/09
+                {isEn ? 'Peak 12/09' : 'Đỉnh lũ 12/09'}
               </button>
               <button
                 type="button"
                 onClick={() => onSelectCommune(null)}
-                title="Quay lại danh sách tổng quan toàn vùng (Esc)"
-                className="inline-flex h-7 items-center gap-1 rounded-[5px] border border-[#8ACBB5]/80 bg-transparent px-2 text-[11.5px] font-medium text-[#CDECD7] transition-colors hover:bg-[#8ACBB5]/15 hover:text-white"
+                title={
+                  isEn
+                    ? 'Return to 12-province regional overview (Esc)'
+                    : 'Quay lại danh sách tổng quan toàn vùng (Esc)'
+                }
+                className="inline-flex h-7 items-center gap-1 rounded-[4px] border border-lineStrong bg-transparent px-2 text-[11.5px] font-medium text-inkMuted transition-colors hover:border-inkDim hover:text-ink"
               >
                 <ArrowLeft className="h-3 w-3" strokeWidth={2} />
-                <span>Danh sách</span>
+                <span>{isEn ? 'Overview' : 'Danh sách'}</span>
               </button>
             </div>
           </div>
@@ -227,38 +310,85 @@ export function OperationalDrawer({
           {/* Compact 4-signal verification matrix */}
           <div className="mt-3 divide-y divide-line rounded-[6px] border border-lineStrong bg-canvas text-[12.5px]">
             <SignalRow
-              label="R1 Mưa 24h (Đ.44 QĐ 18)"
+              label={isEn ? 'R1 24h Rain (Dec. 18)' : 'R1 Mưa 24h (Đ.44 QĐ 18)'}
               value={`${c.rain_mm} mm`}
-              status={signalEval.r1On ? 'Chạm ngưỡng' : c.r1 ? 'Chưa đến ngày' : 'Dưới 200mm'}
-              tone={signalEval.r1On ? 'alert' : 'neutral'}
+              status={
+                signalEval.r1On
+                  ? isEn
+                    ? 'Triggered'
+                    : 'Chạm ngưỡng'
+                  : c.r1
+                  ? isEn
+                    ? 'Pre-event date'
+                    : 'Chưa đến ngày'
+                  : isEn
+                  ? 'Below 200mm'
+                  : 'Dưới 200mm'
+              }
+              dotColor={signalEval.r1On ? SIGNAL_COLORS.r1 : undefined}
             />
             <SignalRow
-              label={`R3 Gió bão (${layers.useR64 ? 'R64' : 'R50'})`}
-              value={signalEval.r3On ? 'Trong vùng gió' : 'Không'}
+              label={
+                isEn
+                  ? `R3 Typhoon Wind (${layers.useR64 ? 'R64' : 'R50'})`
+                  : `R3 Gió bão (${layers.useR64 ? 'R64' : 'R50'})`
+              }
+              value={
+                signalEval.r3On
+                  ? isEn
+                    ? 'In wind swath'
+                    : 'Trong vùng gió'
+                  : isEn
+                  ? 'Outside'
+                  : 'Không'
+              }
               status={c.r3_time ? c.r3_time.slice(0, 10) : '—'}
-              tone={signalEval.r3On ? 'warn' : 'neutral'}
+              dotColor={
+                signalEval.r3On
+                  ? layers.useR64
+                    ? SIGNAL_COLORS.r3R64
+                    : SIGNAL_COLORS.r3R50
+                  : undefined
+              }
             />
             <SignalRow
-              label="Mực nước sông (QĐ 05)"
-              value="11 trạm thủy văn"
-              status="Chờ nối GID_3 xã"
-              tone="neutral"
+              label={isEn ? 'R2 River Stage (Dec. 05)' : 'R2 Mực nước sông (QĐ 05)'}
+              value={isEn ? '11 gauges' : '11 trạm thủy văn'}
+              status={isEn ? 'Pending GID_3 link' : 'Chờ nối GID_3 xã'}
+              dotColor={SIGNAL_COLORS.r2}
+              mutedStatus
             />
             <SignalRow
               label="UNOSAT 3966 / Sentinel-1"
               value={
                 c.unosat_flood_pct !== null
-                  ? `${c.unosat_flood_pct.toFixed(1)}% ngập`
+                  ? isEn
+                    ? `${c.unosat_flood_pct.toFixed(1)}% flood`
+                    : `${c.unosat_flood_pct.toFixed(1)}% ngập`
+                  : isEn
+                  ? 'Outside RRD scan'
                   : 'Ngoài vùng ĐBSH'
               }
               status={
                 c.unosat_label === 1
-                  ? 'Ngập >= 5%'
+                  ? isEn
+                    ? 'Flood >= 5%'
+                    : 'Ngập >= 5%'
                   : c.unosat_flood_pct !== null
-                  ? 'Dưới 5%'
+                  ? isEn
+                    ? 'Below 5%'
+                    : 'Dưới 5%'
+                  : isEn
+                  ? 'Use S1 / Field'
                   : 'Dùng S1 / Thực địa'
               }
-              tone={c.unosat_label === 1 ? 'info' : 'neutral'}
+              dotColor={
+                c.unosat_label === 1
+                  ? SIGNAL_COLORS.unosat
+                  : c.s1_label === 1
+                  ? SIGNAL_COLORS.s1
+                  : undefined
+              }
             />
           </div>
         </div>
@@ -266,7 +396,9 @@ export function OperationalDrawer({
         <div className="border-b border-lineStrong px-4 py-3.5">
           <div className="flex items-center justify-between gap-2">
             <h2 className="truncate text-[15px] font-semibold text-ink">
-              Tổng quan Toàn vùng — 12 tỉnh Bắc Bộ
+              {isEn
+                ? 'Regional Overview — 12 Northern Provinces'
+                : 'Tổng quan Toàn vùng — 12 tỉnh Bắc Bộ'}
             </h2>
             <button
               type="button"
@@ -277,37 +409,50 @@ export function OperationalDrawer({
                   : 'bg-[#CDECD7] text-[#0E1F1A] hover:bg-[#D8F1E0]'
               }`}
             >
-              Đỉnh lũ 12/09
+              {isEn ? 'Flood Peak 12/09' : 'Đỉnh lũ 12/09'}
             </button>
           </div>
           <div className="mt-1 text-[12px] text-inkMuted">
-            2.895 xã GADM v4.1 &middot; Bấm xã trên bản đồ hoặc dải đối chứng để xem chi tiết
+            {isEn
+              ? '2,895 GADM v4.1 communes · Select any commune on map or benchmark strip'
+              : '2.895 xã GADM v4.1 · Bấm xã trên bản đồ hoặc dải đối chứng để xem chi tiết'}
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
             <div className="rounded-[6px] border border-lineStrong bg-canvas px-3 py-2">
-              <div className="text-[11px] text-inkDim">Xã chạm ngưỡng R1/R3</div>
+              <div className="text-[11px] text-inkDim">
+                {isEn ? 'R1/R3 Triggered Communes' : 'Xã chạm ngưỡng R1/R3'}
+              </div>
               <div className="mt-0.5 font-mono text-[15px] font-semibold text-ink tabular-nums">
-                {formatNum(stats.triggeredCount)}{' '}
-                <span className="text-[12px] font-normal text-inkDim">/ 2.895</span>
+                {formatNum(stats.triggeredCount, lang)}{' '}
+                <span className="text-[12px] font-normal text-inkDim">
+                  / {formatNum(communes.length, lang)}
+                </span>
               </div>
             </div>
             <div className="rounded-[6px] border border-lineStrong bg-canvas px-3 py-2">
-              <div className="text-[11px] text-inkDim">Dư nợ vùng rủi ro (giả lập)</div>
+              <div className="text-[11px] text-inkDim">
+                {isEn ? 'At-Risk Portfolio (Sim.)' : 'Dư nợ vùng rủi ro (giả lập)'}
+              </div>
               <div className="mt-0.5 font-mono text-[15px] font-semibold text-ink tabular-nums">
-                {formatVndBillions(stats.triggeredDebtM)}
+                {formatVndBillions(stats.triggeredDebtM, lang)}
               </div>
             </div>
             <div className="rounded-[6px] border border-lineStrong bg-canvas px-3 py-2">
-              <div className="text-[11px] text-inkDim">Dự phòng 5% NĐ 86 nguy cơ</div>
+              <div className="text-[11px] text-inkDim">
+                {isEn ? '5% Dec. 86 Provision Risk' : 'Dự phòng 5% NĐ 86 nguy cơ'}
+              </div>
               <div className="mt-0.5 font-mono text-[15px] font-semibold text-ink tabular-nums">
-                {formatVndBillions(stats.triggeredDebtM * 0.05)}
+                {formatVndBillions(stats.triggeredDebtM * 0.05, lang)}
               </div>
             </div>
             <div className="rounded-[6px] border border-lineStrong bg-canvas px-3 py-2">
-              <div className="text-[11px] text-inkDim">Hòa vốn mô hình 1/725</div>
+              <div className="text-[11px] text-inkDim">
+                {isEn ? 'Break-Even (1 / 725 Loans)' : 'Hòa vốn mô hình 1/725'}
+              </div>
               <div className="mt-0.5 font-mono text-[15px] font-semibold text-ink tabular-nums">
-                {formatNum(stats.savedLoans)} khoản giữ N1
+                {formatNum(stats.savedLoans, lang)}{' '}
+                {isEn ? 'kept Group 1' : 'khoản giữ N1'}
               </div>
             </div>
           </div>
@@ -316,25 +461,34 @@ export function OperationalDrawer({
 
       {/* Minimal Segmented Underline Tab Bar */}
       <nav
-        aria-label="Nghiệp vụ chi tiết"
-        className="flex overflow-x-auto border-b border-lineStrong bg-canvas px-1.5"
+        aria-label={isEn ? 'Operational workflows' : 'Nghiệp vụ chi tiết'}
+        className="flex overflow-x-auto border-b border-lineStrong bg-canvas px-1"
       >
         {DRAWER_TABS.map((tab) => {
           const active = tab.id === activeTab;
+          const isAiTab = tab.id === 'ai';
           return (
             <button
               key={tab.id}
               type="button"
               onClick={() => onChangeTab(tab.id)}
-              className={`relative shrink-0 whitespace-nowrap px-2.5 py-2.5 text-center text-[12px] font-medium transition-colors sm:flex-1 sm:px-1.5 ${
+              className={`relative inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap px-2 py-2.5 text-center text-[11.5px] font-medium transition-colors sm:flex-1 sm:px-1 ${
                 active
-                  ? 'text-ink'
+                  ? isAiTab
+                    ? 'text-[#8ACBB5]'
+                    : 'text-ink'
+                  : isAiTab
+                  ? 'text-[#8ACBB5]/80 hover:text-[#8ACBB5]'
                   : 'text-inkDim hover:text-inkMuted'
               }`}
             >
-              {tab.label}
+              <span>{isEn ? tab.en : tab.vi}</span>
               {active && (
-                <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-ink" />
+                <span
+                  className={`absolute bottom-0 left-1.5 right-1.5 h-[2px] ${
+                    isAiTab ? 'bg-[#8ACBB5]' : 'bg-ink'
+                  }`}
+                />
               )}
             </button>
           );
@@ -343,6 +497,23 @@ export function OperationalDrawer({
 
       {/* Active Tab Content */}
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {activeTab === 'ai' && (
+          <AiCopilotPanel
+            lang={lang}
+            communes={communes}
+            stations={stations}
+            selectedCommune={c}
+            assessments={assessments}
+            whatIf={whatIf}
+            dateStr={dateStr}
+            aiHighlightedCount={aiHighlightedCount}
+            onSelectCommune={onSelectCommune}
+            onApplyAiAction={onApplyAiAction}
+            onClearAiHighlights={onClearAiHighlights}
+            onOpenExceptionsTab={() => onChangeTab('exceptions')}
+          />
+        )}
+
         {activeTab === 'bank' && (
           c ? (
             <div className="space-y-3.5">
@@ -350,16 +521,21 @@ export function OperationalDrawer({
               <div className="flex items-center justify-between rounded-[6px] border border-lineStrong bg-canvas px-3.5 py-2.5">
                 <div>
                   <div className="text-[11.5px] text-inkDim">
-                    Danh mục nông thôn gắn mã xã (giả lập 290tr/khoản)
+                    {isEn
+                      ? 'Rural portfolio by commune (sim. 290M VND/loan)'
+                      : 'Danh mục nông thôn gắn mã xã (giả lập 290tr/khoản)'}
                   </div>
                   <div className="mt-0.5 font-mono text-[15px] font-semibold text-ink tabular-nums">
-                    {c.sim_loans} khoản &middot; {formatVndBillions(c.sim_debt_m_vnd)}
+                    {formatNum(c.sim_loans, lang)} {isEn ? 'loans' : 'khoản'} &middot;{' '}
+                    {formatVndBillions(c.sim_debt_m_vnd, lang)}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[11px] text-inkDim">Dự phòng 5% tránh được</div>
+                  <div className="text-[11px] text-inkDim">
+                    {isEn ? '5% provision avoided' : 'Dự phòng 5% tránh được'}
+                  </div>
                   <div className="font-mono text-[13px] font-semibold text-ink tabular-nums">
-                    {formatVndBillions(c.sim_debt_m_vnd * 0.05)}
+                    {formatVndBillions(c.sim_debt_m_vnd * 0.05, lang)}
                   </div>
                 </div>
               </div>
@@ -367,14 +543,32 @@ export function OperationalDrawer({
               {/* Borrower App/SMS Notification Preview */}
               <div className="rounded-[6px] border border-lineStrong bg-panelAlt p-3.5">
                 <div className="flex items-center justify-between border-b border-line pb-2 text-[11.5px] text-inkDim">
-                  <span>SMS / App Ngân hàng gửi Hộ vay</span>
-                  <span className="font-mono text-inkMuted">Khoản 1 Đ.3 TT 29/2025</span>
+                  <span>
+                    {isEn
+                      ? 'SMS / Banking App Notice to Borrower'
+                      : 'SMS / App Ngân hàng gửi Hộ vay'}
+                  </span>
+                  <span className="font-mono text-inkMuted">
+                    {isEn ? 'Art. 3.1 Cir. 29/2025' : 'Khoản 1 Đ.3 TT 29/2025'}
+                  </span>
                 </div>
 
                 <p className="mt-2.5 text-[13px] leading-relaxed text-ink">
-                  Địa bàn <b>Xã {c.name}</b> ({c.province}) ghi nhận tín hiệu thiên tai Bão Yagi (mưa {c.rain_mm}mm
-                  {c.r3_r50 ? ', gió R50' : ''}). Quý khách đủ điều kiện đề nghị{' '}
-                  <b>giãn nợ 3–6 tháng và giữ nguyên Nhóm nợ 1</b> trong cửa sổ 10 ngày quá hạn.
+                  {isEn ? (
+                    <>
+                      <b>{c.name} Commune</b> ({c.province}) recorded Typhoon Yagi hazard signals
+                      (rain {c.rain_mm}mm{c.r3_r50 ? ', wind R50' : ''}). You qualify to request{' '}
+                      <b>3–6 month debt deferral while retaining Credit Group 1</b> within the
+                      10-day overdue window.
+                    </>
+                  ) : (
+                    <>
+                      Địa bàn <b>Xã {c.name}</b> ({c.province}) ghi nhận tín hiệu thiên tai Bão
+                      Yagi (mưa {c.rain_mm}mm{c.r3_r50 ? ', gió R50' : ''}). Quý khách đủ điều kiện
+                      đề nghị <b>giãn nợ 3–6 tháng và giữ nguyên Nhóm nợ 1</b> trong cửa sổ 10 ngày
+                      quá hạn.
+                    </>
+                  )}
                 </p>
 
                 <div className="mt-3.5 flex flex-wrap items-center gap-2">
@@ -391,51 +585,103 @@ export function OperationalDrawer({
                     <Check className="h-3.5 w-3.5" strokeWidth={2} />
                     <span>
                       {isConfirmed
-                        ? 'Đã ghi nhận đề nghị giãn nợ (Nhóm 1)'
+                        ? isEn
+                          ? 'Deferral request recorded (Group 1)'
+                          : 'Đã ghi nhận đề nghị giãn nợ (Nhóm 1)'
+                        : isEn
+                        ? 'Confirm fast debt deferral'
                         : 'Xác nhận giãn nợ nhanh'}
                     </span>
                   </button>
                 </div>
 
                 {isConfirmed && (
-                  <div className="mt-2.5 rounded-[5px] border border-line bg-canvas/60 px-3 py-2 text-[11.5px] text-[#CBD5E1]">
-                    Đã lưu xác nhận điện tử của khách hàng. Khoản vay tại {c.name} giữ nguyên Nhóm 1, miễn trích lập 5% dự phòng Nhóm 2 theo NĐ 86/2024.
+                  <div className="mt-2.5 rounded-[4px] border border-line bg-canvas/60 px-3 py-2 text-[11.5px] text-[#CBD5E1]">
+                    {isEn
+                      ? `Digital consent saved for ${c.name}: Group 1 kept, 5% provision waived (Decree 86).`
+                      : `Đã lưu xác nhận cho Xã ${c.name}: giữ Nhóm 1, miễn 5% dự phòng NĐ 86.`}
                   </div>
                 )}
               </div>
 
-              <div className="rounded-[6px] border border-lineStrong bg-canvas px-3 py-2.5 text-[12px] text-inkMuted">
-                <b className="font-medium text-ink">Lưới an toàn đa kênh:</b> Hộ vay không dùng smartphone hoặc mất điện/sóng di động vẫn được tiếp nhận đơn giấy trực tiếp tại quầy giao dịch trong thời hạn 10 ngày.
+              <div className="rounded-[4px] border border-lineStrong bg-canvas px-3 py-2 text-[11.5px] text-inkMuted">
+                <b className="font-medium text-ink">
+                  {isEn ? 'Counter fallback:' : 'Nộp tại quầy:'}
+                </b>{' '}
+                {isEn
+                  ? 'Borrowers without smartphones can still submit paper forms within 10 days.'
+                  : 'Hộ không dùng smartphone vẫn nộp đơn giấy tại quầy trong 10 ngày.'}
               </div>
             </div>
           ) : (
             <div className="space-y-3.5">
-              <div className="rounded-[6px] border border-lineStrong bg-panelAlt p-3.5">
+              <div className="rounded-[4px] border border-lineStrong bg-panelAlt p-3.5">
                 <div className="flex items-center justify-between border-b border-line pb-2 text-[11.5px] text-inkDim">
-                  <span>Chiến dịch Giãn nợ Toàn vùng (TT 29/2025)</span>
-                  <span className="font-mono text-inkMuted">Hòa vốn 1 / 725 khoản</span>
+                  <span>
+                    {isEn
+                      ? 'Regional Debt Relief (Cir. 29/2025)'
+                      : 'Chiến dịch Giãn nợ Toàn vùng (TT 29/2025)'}
+                  </span>
+                  <span className="font-mono text-inkMuted">
+                    {isEn ? 'Break-even 1 / 725' : 'Hòa vốn 1 / 725 khoản'}
+                  </span>
                 </div>
-                <p className="mt-2.5 text-[12.5px] leading-relaxed text-inkMuted">
-                  Tại ngày <b className="text-ink">{dateStr.split('-').reverse().join('/')}</b>, hệ thống ghi nhận{' '}
-                  <b className="text-ink">{formatNum(stats.triggeredCount)} xã</b> chạm ngưỡng với{' '}
-                  <b className="text-ink">{formatNum(stats.triggeredLoans)} khoản vay giả lập</b> (~{formatVndBillions(stats.triggeredDebtM)}). Phát đề xuất hàng loạt giúp thu thập đề nghị của khách hàng trong cửa sổ 10 ngày quá hạn.
+                <p className="mt-2.5 text-[12px] leading-relaxed text-inkMuted">
+                  {isEn ? (
+                    <>
+                      As of <b className="text-ink">{displayDate}</b>:{' '}
+                      <b className="text-ink">
+                        {formatNum(stats.triggeredCount, lang)} triggered communes
+                      </b>{' '}
+                      &middot;{' '}
+                      <b className="text-ink">
+                        {formatNum(stats.triggeredLoans, lang)} loans
+                      </b>{' '}
+                      (~{formatVndBillions(stats.triggeredDebtM, lang)}). Sends 1-tap deferral notice inside the 10-day window.
+                    </>
+                  ) : (
+                    <>
+                      Mốc <b className="text-ink">{displayDate}</b>:{' '}
+                      <b className="text-ink">{formatNum(stats.triggeredCount, lang)} xã</b> chạm
+                      ngưỡng &middot;{' '}
+                      <b className="text-ink">
+                        {formatNum(stats.triggeredLoans, lang)} khoản vay
+                      </b>{' '}
+                      (~{formatVndBillions(stats.triggeredDebtM, lang)}). Phát đề xuất thu xác nhận trong 10 ngày.
+                    </>
+                  )}
                 </p>
-                <div className="mt-3">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={onLaunchCampaign}
                     disabled={campaignLaunched}
-                    className={`inline-flex h-8 items-center gap-1.5 rounded-[6px] px-3.5 text-[12.5px] font-semibold transition-colors ${
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-[4px] px-3.5 text-[12.5px] font-semibold transition-colors ${
                       campaignLaunched
-                        ? 'bg-[#8ACBB5] text-[#0E1F1A] shadow-sm'
+                        ? 'bg-[#8ACBB5] text-[#0E1F1A]'
                         : 'bg-[#CDECD7] text-[#0E1F1A] hover:bg-[#D8F1E0]'
                     }`}
                   >
                     <Check className="h-3.5 w-3.5" strokeWidth={2} />
                     <span>
                       {campaignLaunched
-                        ? `Đã giữ Nhóm 1 cho ${formatNum(stats.savedLoans)} khoản`
+                        ? isEn
+                          ? `Group 1 retained for ${formatNum(stats.savedLoans, lang)} loans`
+                          : `Đã giữ Nhóm 1 cho ${formatNum(stats.savedLoans, lang)} khoản`
+                        : isEn
+                        ? 'Dispatch regional deferral proposal'
                         : 'Gửi đề xuất giãn nợ toàn vùng'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onChangeTab('ai')}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-[4px] border border-lineStrong bg-canvas px-3 text-[12px] font-medium text-inkMuted transition-colors hover:border-inkDim hover:text-ink"
+                  >
+                    <span>
+                      {isEn
+                        ? `Find +${whatIf.aiExtraFloodedCaught} missed floods`
+                        : `Tìm thêm +${whatIf.aiExtraFloodedCaught} xã ngập bị sót`}
                     </span>
                   </button>
                 </div>
@@ -443,7 +689,9 @@ export function OperationalDrawer({
 
               <div>
                 <div className="mb-1.5 text-[12px] font-medium text-ink">
-                  Các xã trọng điểm ngập cao (bấm để xem chi tiết)
+                  {isEn
+                    ? 'Severely flooded communes (click to inspect)'
+                    : 'Các xã trọng điểm ngập cao (bấm để xem chi tiết)'}
                 </div>
                 <div className="divide-y divide-line rounded-[6px] border border-lineStrong bg-canvas">
                   {hotspotCommunes.map((h) => (
@@ -453,14 +701,15 @@ export function OperationalDrawer({
                       onClick={() => onSelectCommune(h.gid_3)}
                       className="flex w-full items-center justify-between px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-panelAlt"
                     >
-                      <div>
+                      <div className="min-w-0 pr-2">
                         <span className="font-medium text-ink">{h.name}</span>{' '}
                         <span className="text-[11.5px] text-inkDim">
                           ({h.district}, {h.province})
                         </span>
                       </div>
-                      <span className="font-mono text-[11.5px] text-inkMuted tabular-nums">
-                        {h.unosat_flood_pct?.toFixed(1)}% &middot; {h.sim_loans} khoản
+                      <span className="shrink-0 font-mono text-[11.5px] text-inkMuted tabular-nums">
+                        {h.unosat_flood_pct?.toFixed(1)}% &middot; {h.sim_loans}{' '}
+                        {isEn ? 'loans' : 'khoản'}
                       </span>
                     </button>
                   ))}
@@ -477,86 +726,115 @@ export function OperationalDrawer({
                 <button
                   type="button"
                   onClick={() => onSelectCommune(null)}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-[6px] border border-[#8ACBB5] bg-[#161C26] px-3 text-[12px] font-medium text-[#CDECD7] transition-colors hover:border-[#CDECD7] hover:bg-[#8ACBB5]/15 hover:text-white"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-[4px] border border-lineStrong bg-transparent px-3 text-[12px] font-medium text-inkMuted transition-colors hover:border-inkDim hover:text-ink"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.9} />
-                  <span>Quay lại danh sách xã</span>
+                  <span>{isEn ? 'Back to commune list' : 'Quay lại danh sách xã'}</span>
                 </button>
                 <span className="truncate font-mono text-[11px] text-inkDim">
-                  Xã {c.name}
+                  {isEn ? `${c.name} Commune` : `Xã ${c.name}`}
                 </span>
               </div>
 
-              <div className="rounded-[6px] border border-lineStrong bg-canvas p-4">
+              <div className="rounded-[4px] border border-lineStrong bg-canvas p-4">
                 <div className="border-b border-line pb-2.5 text-center text-[12px] font-semibold tracking-wide text-ink">
-                  BIÊN BẢN XÁC NHẬN THIỆT HẠI VIỄN THÁM CẤP XÃ
+                  {isEn
+                    ? 'COMMUNE-LEVEL REMOTE-SENSING LOSS ATTESTATION'
+                    : 'BIÊN BẢN XÁC NHẬN THIỆT HẠI VIỄN THÁM CẤP XÃ'}
                 </div>
 
                 <div className="mt-3 space-y-2 text-[12.5px]">
                   <div className="flex justify-between gap-2 border-b border-line/60 pb-1.5">
-                    <span className="text-inkDim">Đơn vị hành chính</span>
+                    <span className="text-inkDim">
+                      {isEn ? 'Administrative unit' : 'Đơn vị hành chính'}
+                    </span>
                     <span className="text-right font-medium text-ink">
-                      Xã {c.name}, {c.district}, {c.province}
+                      {isEn ? `${c.name} Commune` : `Xã ${c.name}`}, {c.district}, {c.province}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2 border-b border-line/60 pb-1.5">
-                    <span className="text-inkDim">Mã GADM v4.1</span>
+                    <span className="text-inkDim">
+                      {isEn ? 'GADM v4.1 Code' : 'Mã GADM v4.1'}
+                    </span>
                     <span className="font-mono text-ink">{c.gid_3}</span>
                   </div>
                   <div className="flex justify-between gap-2 border-b border-line/60 pb-1.5">
-                    <span className="text-inkDim">Chỉ số khí tượng R1 / R3</span>
+                    <span className="text-inkDim">
+                      {isEn ? 'Meteorological R1 / R3' : 'Chỉ số khí tượng R1 / R3'}
+                    </span>
                     <span className="font-mono text-ink">
-                      {c.rain_mm}mm · R50: {c.r3_r50 ? 'Có' : 'Không'}
+                      {c.rain_mm}mm &middot; R50:{' '}
+                      {c.r3_r50 ? (isEn ? 'Yes' : 'Có') : isEn ? 'No' : 'Không'}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2 border-b border-line/60 pb-1.5">
-                    <span className="text-inkDim">Ảnh ngập UNOSAT 3966</span>
+                    <span className="text-inkDim">
+                      {isEn ? 'UNOSAT 3966 Flood Scan' : 'Ảnh ngập UNOSAT 3966'}
+                    </span>
                     <span className="font-mono text-ink">
                       {c.unosat_flood_pct !== null
                         ? `${c.unosat_flood_ha.toFixed(1)} ha (${c.unosat_flood_pct.toFixed(2)}%)`
+                        : isEn
+                        ? 'Outside RRD scan'
                         : 'Ngoài vùng quét ĐBSH'}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span className="text-inkDim">Hồ sơ vay nông thôn trong xã</span>
-                    <span className="font-mono text-ink">{c.sim_loans} hộ vay</span>
+                    <span className="text-inkDim">
+                      {isEn ? 'Rural loan accounts in commune' : 'Hồ sơ vay nông thôn trong xã'}
+                    </span>
+                    <span className="font-mono text-ink">
+                      {formatNum(c.sim_loans, lang)} {isEn ? 'borrowers' : 'hộ vay'}
+                    </span>
                   </div>
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
                   <span className="text-[11.5px] text-inkDim">
-                    Một chữ ký UBND xã dùng chung cho mọi ngân hàng &amp; bảo hiểm.
+                    {isEn
+                      ? '1 signature shared across banks & insurers.'
+                      : '1 chữ ký UBND dùng chung mọi ngân hàng.'}
                   </span>
                   <button
                     type="button"
                     onClick={() => onSignUbnd(c.gid_3)}
                     disabled={isUbndSigned}
-                    className={`inline-flex h-8 items-center gap-1.5 rounded-[6px] px-3 text-[12px] font-medium transition-colors ${
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-[4px] px-3 text-[12px] font-medium transition-colors ${
                       isUbndSigned
-                        ? 'bg-[#8ACBB5] text-[#0E1F1A] shadow-sm'
+                        ? 'bg-[#8ACBB5] text-[#0E1F1A]'
                         : 'bg-[#CDECD7] text-[#0E1F1A] hover:bg-[#D8F1E0]'
                     }`}
                   >
                     <FileCheck2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                     <span>
-                      {isUbndSigned ? 'UBND Xã đã ký xác nhận chung' : 'Ký xác nhận cho cả xã'}
+                      {isUbndSigned
+                        ? isEn
+                          ? 'Commune signed batch attestation'
+                          : 'UBND Xã đã ký xác nhận chung'
+                        : isEn
+                        ? 'Sign batch commune certificate'
+                        : 'Ký xác nhận cho cả xã'}
                     </span>
                   </button>
                 </div>
               </div>
 
               {isUbndSigned && (
-                <div className="rounded-[4px] bg-white/[0.04] px-3 py-2 text-[12px] text-[#CBD5E1]">
-                  Chứng thư cấp xã cho {c.name} đã có hiệu lực cho toàn bộ {c.sim_loans} hồ sơ vay mà không cần xin giấy xác nhận từng hộ.
+                <div className="rounded-[4px] bg-white/[0.04] px-3 py-2 text-[11.5px] text-[#CBD5E1]">
+                  {isEn
+                    ? `Attestation active for all ${c.sim_loans} loans in ${c.name} (no per-household forms needed).`
+                    : `Chứng thư đã hiệu lực cho toàn bộ ${c.sim_loans} hộ tại ${c.name} (miễn giấy từng hộ).`}
                 </div>
               )}
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="rounded-[6px] border border-lineStrong bg-canvas p-3 text-[12px] text-inkMuted">
-                Ở chế độ tổng quan, chọn 1 xã trong danh sách dưới đây hoặc bấm trực tiếp lên bản đồ để xuất biên bản viễn thám và ký xác nhận UBND xã một lần thay thế biên bản từng hộ.
+              <div className="rounded-[4px] border border-lineStrong bg-canvas px-3 py-2 text-[11.5px] text-inkMuted">
+                {isEn
+                  ? 'Select a commune on the map or below to sign one batch attestation replacing per-household forms.'
+                  : 'Chọn xã trên bản đồ hoặc bên dưới để ký 1 biên bản viễn thám thay giấy từng hộ.'}
               </div>
-              <div className="divide-y divide-line rounded-[6px] border border-lineStrong bg-canvas">
+              <div className="divide-y divide-line rounded-[4px] border border-lineStrong bg-canvas">
                 {hotspotCommunes.map((h) => {
                   const signed = !!ubndSigned[h.gid_3];
                   return (
@@ -570,23 +848,33 @@ export function OperationalDrawer({
                         className="min-w-0 flex-1 text-left"
                       >
                         <div className="truncate text-[12.5px] font-medium text-ink">
-                          Xã {h.name} <span className="text-inkDim">({h.province})</span>
+                          {isEn ? h.name : `Xã ${h.name}`}{' '}
+                          <span className="text-inkDim">({h.province})</span>
                         </div>
                         <div className="font-mono text-[11px] text-inkMuted">
-                          Ngập {h.unosat_flood_pct?.toFixed(1)}% &middot; {h.sim_loans} khoản vay
+                          {isEn ? 'Flood' : 'Ngập'} {h.unosat_flood_pct?.toFixed(1)}% &middot;{' '}
+                          {h.sim_loans} {isEn ? 'loans' : 'khoản vay'}
                         </div>
                       </button>
                       <button
                         type="button"
                         onClick={() => onSelectCommune(h.gid_3)}
-                        className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] px-3 text-[12px] font-semibold transition-colors ${
+                        className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-[4px] px-2.5 text-[11.5px] font-semibold transition-colors ${
                           signed
-                            ? 'bg-[#8ACBB5] text-[#0E1F1A] shadow-sm'
+                            ? 'bg-[#8ACBB5] text-[#0E1F1A]'
                             : 'bg-[#CDECD7] text-[#0E1F1A] hover:bg-[#D8F1E0]'
                         }`}
                       >
                         <FileCheck2 className="h-3.5 w-3.5" strokeWidth={1.85} />
-                        <span>{signed ? 'Đã ký chung' : 'Mở biên bản'}</span>
+                        <span>
+                          {signed
+                            ? isEn
+                              ? 'Signed'
+                              : 'Đã ký chung'
+                            : isEn
+                            ? 'Open Brief'
+                            : 'Mở biên bản'}
+                        </span>
                       </button>
                     </div>
                   );
@@ -603,72 +891,153 @@ export function OperationalDrawer({
                 <button
                   type="button"
                   onClick={() => onSelectCommune(null)}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-[6px] border border-[#8ACBB5] bg-[#161C26] px-3 text-[12px] font-medium text-[#CDECD7] transition-colors hover:border-[#CDECD7] hover:bg-[#8ACBB5]/15 hover:text-white"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-[4px] border border-lineStrong bg-transparent px-3 text-[12px] font-medium text-inkMuted transition-colors hover:border-inkDim hover:text-ink"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.9} />
-                  <span>Quay lại danh sách ngoại lệ</span>
+                  <span>
+                    {isEn ? 'Back to exception queue' : 'Quay lại danh sách ngoại lệ'}
+                  </span>
                 </button>
                 <span className="truncate font-mono text-[11px] text-inkDim">
-                  Xã {c.name}
+                  {isEn ? `${c.name} Commune` : `Xã ${c.name}`}
                 </span>
               </div>
 
-              <div className="rounded-[6px] border border-lineStrong bg-canvas p-4">
+              {selectedAi && (
+                <div className="rounded-[4px] border border-lineStrong bg-canvas p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11.5px] font-semibold text-ink">
+                      {isEn ? 'Priority Score' : 'Điểm ưu tiên duyệt'} &middot;{' '}
+                      <span className="font-mono text-ink">{selectedAi.score}/100</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onChangeTab('ai')}
+                      className="rounded-[4px] border border-lineStrong px-2 py-0.5 text-[10.5px] font-medium text-inkMuted hover:border-inkDim hover:text-ink"
+                    >
+                      {isEn ? 'Draft memo' : 'Nhờ AI viết tờ trình'}
+                    </button>
+                  </div>
+                  <p className="mt-1.5 text-[11.5px] leading-relaxed text-inkMuted">
+                    {isEn ? selectedAi.summaryEn : selectedAi.summaryVi}
+                  </p>
+                  <p className="mt-1 text-[10.5px] leading-snug text-inkDim">
+                    {isEn
+                      ? 'Rule-based heuristic triage rank (not a calibrated ML flood probability).'
+                      : 'Điểm heuristic từ quy tắc để xếp thứ tự rà soát (chưa phải xác suất ML hiệu chuẩn).'}
+                  </p>
+                  <div className="mt-2 grid grid-cols-4 divide-x divide-line rounded-[4px] border border-lineStrong bg-panelAlt">
+                    {selectedAi.factors.map((f) => {
+                      const shortName =
+                        f.key === 'flood'
+                          ? isEn
+                            ? 'Flood'
+                            : 'Ngập'
+                          : f.key === 'rain'
+                          ? isEn
+                            ? 'Rain'
+                            : 'Mưa'
+                          : f.key === 'wind'
+                          ? isEn
+                            ? 'Wind'
+                            : 'Gió'
+                          : isEn
+                          ? 'Province'
+                          : 'Tỉnh/Vay';
+                      return (
+                        <div key={f.key} className="px-2 py-1.5 text-center">
+                          <div className="text-[10px] text-inkDim">{shortName}</div>
+                          <div className="font-mono text-[11px] font-semibold text-ink tabular-nums">
+                            {f.points}/{f.maxPoints}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-[4px] border border-lineStrong bg-canvas p-4">
                 <div className="border-b border-line pb-2.5 text-center text-[12px] font-semibold tracking-wide text-ink">
-                  PHIẾU DUYỆT NGOẠI LỆ &amp; MỞ HỒ SƠ GIẤY
+                  {isEn
+                    ? 'EXCEPTION REVIEW & PAPER DOSSIER'
+                    : 'PHIẾU DUYỆT NGOẠI LỆ & MỞ HỒ SƠ GIẤY'}
                 </div>
 
                 <div className="mt-3 space-y-2 text-[12.5px]">
                   <div className="flex justify-between gap-2 border-b border-line/60 pb-1.5">
-                    <span className="text-inkDim">Đơn vị hành chính</span>
+                    <span className="text-inkDim">
+                      {isEn ? 'Administrative unit' : 'Đơn vị hành chính'}
+                    </span>
                     <span className="text-right font-medium text-ink">
-                      Xã {c.name}, {c.district}, {c.province}
+                      {isEn ? `${c.name} Commune` : `Xã ${c.name}`}, {c.district}, {c.province}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2 border-b border-line/60 pb-1.5">
-                    <span className="text-inkDim">Cơ sở xét ngoại lệ</span>
+                    <span className="text-inkDim">
+                      {isEn ? 'Exception basis' : 'Cơ sở xét ngoại lệ'}
+                    </span>
                     <span className="text-right font-mono text-ink">
                       {c.unosat_status !== 'CLASSIFIABLE'
-                        ? 'Ngoài vùng chụp UNOSAT ĐBSH'
+                        ? isEn
+                          ? 'Outside RRD UNOSAT footprint'
+                          : 'Ngoài vùng chụp UNOSAT ĐBSH'
                         : c.unosat_label === 1 && !c.r1
-                        ? `Ngập ${c.unosat_flood_pct?.toFixed(1)}% · R1=${c.rain_mm}mm (<200)`
+                        ? isEn
+                          ? `Flood ${c.unosat_flood_pct?.toFixed(1)}% · R1=${c.rain_mm}mm (<200)`
+                          : `Ngập ${c.unosat_flood_pct?.toFixed(1)}% · R1=${c.rain_mm}mm (<200)`
+                        : isEn
+                        ? 'Supplementary counter paper intake'
                         : 'Tiếp nhận đơn giấy bổ sung tại quầy'}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2 border-b border-line/60 pb-1.5">
-                    <span className="text-inkDim">Dữ liệu mưa / vệ tinh</span>
+                    <span className="text-inkDim">
+                      {isEn ? 'Rainfall / Satellite' : 'Dữ liệu mưa / vệ tinh'}
+                    </span>
                     <span className="font-mono text-ink">
-                      Mưa {c.rain_mm}mm &middot;{' '}
+                      {isEn ? 'Rain' : 'Mưa'} {c.rain_mm}mm &middot;{' '}
                       {c.unosat_flood_pct !== null
                         ? `UNOSAT ${c.unosat_flood_pct.toFixed(1)}%`
+                        : isEn
+                        ? 'S1 / Field'
                         : 'S1 / Thực địa'}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span className="text-inkDim">Hồ sơ vay thuộc diện rà soát</span>
+                    <span className="text-inkDim">
+                      {isEn ? 'Loans under officer review' : 'Hồ sơ vay thuộc diện rà soát'}
+                    </span>
                     <span className="font-mono text-ink">
-                      {c.sim_loans} khoản &middot; {formatVndBillions(c.sim_debt_m_vnd)}
+                      {formatNum(c.sim_loans, lang)} {isEn ? 'loans' : 'khoản'} &middot;{' '}
+                      {formatVndBillions(c.sim_debt_m_vnd, lang)}
                     </span>
                   </div>
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
                   <span className="text-[11.5px] text-inkDim">
-                    Cho phép nộp đơn giấy tại quầy trong cửa sổ 10 ngày TT 29/2025.
+                    {isEn
+                      ? 'Authorizes branch counter paper intake (10-day window).'
+                      : 'Mở nộp đơn giấy tại quầy (cửa sổ 10 ngày · TT 29/2025).'}
                   </span>
                   <button
                     type="button"
                     onClick={() => onResolveException(c.gid_3)}
-                    className={`inline-flex h-8 items-center gap-1.5 rounded-[6px] px-3 text-[12px] font-semibold transition-colors ${
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-[4px] px-3 text-[12px] font-semibold transition-colors ${
                       isExResolved
-                        ? 'bg-[#8ACBB5] text-[#0E1F1A] shadow-sm'
+                        ? 'bg-[#8ACBB5] text-[#0E1F1A]'
                         : 'bg-[#CDECD7] text-[#0E1F1A] hover:bg-[#D8F1E0]'
                     }`}
                   >
                     <Check className="h-3.5 w-3.5" strokeWidth={2} />
                     <span>
                       {isExResolved
-                        ? 'Đã duyệt & mở hồ sơ giấy'
+                        ? isEn
+                          ? 'Approved & dossier opened'
+                          : 'Đã duyệt & mở hồ sơ giấy'
+                        : isEn
+                        ? 'Approve & Open Dossier'
                         : 'Duyệt & Mở hồ sơ giấy'}
                     </span>
                   </button>
@@ -676,80 +1045,216 @@ export function OperationalDrawer({
               </div>
 
               {isExResolved && (
-                <div className="rounded-[5px] border border-line bg-white/[0.04] px-3 py-2 text-[12px] text-[#CBD5E1]">
-                  Đã duyệt ngoại lệ và mở luồng hồ sơ giấy tại quầy cho Xã {c.name}. Toàn bộ chứng từ bổ sung được lưu vết giữ Nhóm nợ 1 theo TT 29/2025 &amp; NĐ 86/2024.
+                <div className="rounded-[4px] border border-line bg-white/[0.04] px-3 py-2 text-[11.5px] text-[#CBD5E1]">
+                  {isEn
+                    ? `Paper intake opened for ${c.name} — Credit Group 1 preserved (Cir. 29/2025 & Dec. 86/2024).`
+                    : `Đã duyệt ngoại lệ & mở hồ sơ giấy cho Xã ${c.name} (giữ Nhóm 1 theo TT 29/2025 & NĐ 86/2024).`}
                 </div>
               )}
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-start gap-2 rounded-[6px] border border-lineStrong bg-canvas p-2.5 text-[12px] text-inkMuted">
-                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-inkMuted" strokeWidth={1.75} />
-                <div>
-                  <b className="font-medium text-ink">Hàng đợi duyệt ngoại lệ (Cán bộ tín dụng):</b>{' '}
-                  Xử lý những xã ngập thực tế (UNOSAT &ge;5% nhưng mưa R1 tại chỗ &lt;200mm) hoặc nằm ngoài vùng quét vệ tinh UNOSAT ĐBSH.
+              {/* Full Interactive Score Threshold Filter & Live Portfolio Simulator */}
+              <div className="rounded-[4px] border border-lineStrong bg-panelAlt p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 font-semibold text-ink">
+                    <SlidersHorizontal className="h-3.5 w-3.5 text-inkDim" />
+                    <span className="text-[12.5px]">
+                      {isEn
+                        ? 'Missed-Flood Filter Threshold'
+                        : 'Ngưỡng lọc xã ngập bị sót'}
+                    </span>
+                  </div>
+                  <span className="font-mono text-[12px] font-semibold text-ink tabular-nums">
+                    {isEn ? `Score ≥ ${aiThreshold}` : `Từ ${aiThreshold} điểm`}
+                  </span>
+                </div>
+
+                <p className="mt-1 text-[11px] text-inkMuted">
+                  {isEn
+                    ? 'Slide to balance missed floods caught (rain <200mm) vs. review queue (rule score, not calibrated ML; simulated loan proxies):'
+                    : 'Kéo để chỉnh danh sách xã ngập sót (mưa <200mm) & lượng rà (điểm rule chưa hiệu chuẩn ML; số hộ & dự phòng là mô phỏng):'}
+                </p>
+
+                <div className="mt-2">
+                  <input
+                    type="range"
+                    min={45}
+                    max={85}
+                    step={5}
+                    value={aiThreshold}
+                    onChange={(e) => onChangeAiThreshold(Number(e.target.value))}
+                    aria-label={
+                      isEn
+                        ? 'Filter exception queue by priority score'
+                        : 'Ngưỡng điểm ưu tiên lọc danh sách ngoại lệ'
+                    }
+                    className="timeline-slider w-full"
+                  />
+                  <div className="mt-1 flex justify-between font-mono text-[10px] text-inkDim">
+                    <span>45 · {isEn ? 'Broad' : 'Vớt rộng'}</span>
+                    <span>65 · {isEn ? 'Balanced' : 'Cân bằng'}</span>
+                    <span>85 · {isEn ? 'Strict' : 'Chặt'}</span>
+                  </div>
+                </div>
+
+                <div className="mt-2.5 grid grid-cols-3 divide-x divide-line rounded-[4px] border border-lineStrong bg-canvas">
+                  <div className="px-2.5 py-2">
+                    <div className="text-[10.5px] text-inkDim">
+                      {isEn ? 'Floods Caught' : 'Bắt đúng ngập'}
+                    </div>
+                    <div className="mt-0.5 font-mono text-[13px] font-semibold text-ink tabular-nums">
+                      {formatPct(whatIf.aiRecallPct, lang, 1)}
+                    </div>
+                    <div className="font-mono text-[10.5px] text-[#8ACBB5]">
+                      +{formatPct(whatIf.recallLiftPct, lang, 1)}
+                    </div>
+                  </div>
+
+                  <div className="px-2.5 py-2">
+                    <div className="text-[10.5px] text-inkDim">
+                      {isEn ? 'Kept Group 1' : 'Hộ giữ N1'}
+                    </div>
+                    <div className="mt-0.5 font-mono text-[13px] font-semibold text-ink tabular-nums">
+                      +{formatNum(whatIf.extraLoansRescued, lang)}
+                    </div>
+                    <div className="font-mono text-[10.5px] text-inkMuted">
+                      {isEn ? 'loans' : 'khoản cứu'}
+                    </div>
+                  </div>
+
+                  <div className="px-2.5 py-2">
+                    <div className="text-[10.5px] text-inkDim">
+                      {isEn ? 'Prov. Saved' : 'Giảm dự phòng'}
+                    </div>
+                    <div className="mt-0.5 font-mono text-[13px] font-semibold text-ink tabular-nums">
+                      {formatVndBillions(whatIf.extraProvisionAvoidedM, lang)}
+                    </div>
+                    <div className="font-mono text-[10.5px] text-inkMuted">
+                      {isEn ? '5% Dec 86' : 'NĐ 86 (5%)'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] text-inkDim tabular-nums">
+                  <span>
+                    {isEn
+                      ? `+${whatIf.aiExtraFloodedCaught} flood · +${whatIf.outsideBlindSpotFlagged} outer · ${whatIf.reviewQueueAdded} review`
+                      : `+${whatIf.aiExtraFloodedCaught} ngập · +${whatIf.outsideBlindSpotFlagged} ngoài ảnh · rà ${whatIf.reviewQueueAdded} xã`}
+                  </span>
+                  <span className="font-semibold text-ink">
+                    {formatNum(exceptionSummary.totalMatching, lang)}{' '}
+                    {isEn ? 'communes queued' : 'xã trong danh sách'}
+                  </span>
                 </div>
               </div>
 
-              <div className="divide-y divide-line rounded-[6px] border border-lineStrong bg-canvas">
-                {exceptionList.map((ex) => {
+              {exceptionQueue.length === 0 ? (
+                <div className="rounded-[4px] border border-lineStrong bg-canvas p-4 text-center text-[12px] text-inkMuted">
+                  <p>
+                    {isEn
+                      ? `No missed flooded communes score ≥ ${aiThreshold}/100 (highest is 84).`
+                      : `Không có xã ngập bị sót nào đạt từ ${aiThreshold}/100 điểm trở lên (cao nhất hiện tại là 84 điểm).`}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onChangeAiThreshold(55)}
+                    className="mt-2.5 inline-flex h-7 items-center rounded-[4px] bg-[#CDECD7] px-3 text-[11.5px] font-semibold text-[#0E1F1A] hover:bg-[#D8F1E0]"
+                  >
+                    {isEn ? 'Reset to ≥ 55' : 'Đặt ngưỡng về 55 điểm'}
+                  </button>
+                </div>
+              ) : (
+              <div className="divide-y divide-line rounded-[4px] border border-lineStrong bg-canvas">
+                {exceptionQueue.map(({ commune: ex, ai }) => {
                   const done = !!exceptionsResolved[ex.gid_3];
-                  const reason =
-                    ex.unosat_status !== 'CLASSIFIABLE'
-                      ? 'Ngoài vùng UNOSAT ĐBSH'
-                      : `Ngập ${ex.unosat_flood_pct?.toFixed(1)}% · R1=${ex.rain_mm}mm (<200)`;
+                  const rainInt = Math.round(ex.rain_mm);
+                  const reason = ai.isBasisRiskMiss
+                    ? isEn
+                      ? `Flood ${ex.unosat_flood_pct?.toFixed(1)}% · Rain ${rainInt}mm`
+                      : `Ngập ${ex.unosat_flood_pct?.toFixed(1)}% · Mưa ${rainInt}mm`
+                    : isEn
+                    ? `Out of scan · Rain ${rainInt}mm`
+                    : `Ngoài UNOSAT · Mưa ${rainInt}mm`;
                   return (
                     <div
                       key={ex.gid_3}
-                      className="flex items-center justify-between gap-2 px-3 py-2.5 transition-colors hover:bg-panelAlt"
+                      className="flex items-center justify-between gap-2.5 px-3 py-2.5 transition-colors hover:bg-panelAlt"
                     >
                       <button
                         type="button"
                         onClick={() => onSelectCommune(ex.gid_3)}
-                        className="min-w-0 flex-1 text-left"
+                        title={
+                          isEn
+                            ? `Priority score ${ai.score}/100 (flood severity, rain, wind, exposure)`
+                            : `Điểm ưu tiên ${ai.score}/100 (độ ngập, mưa cận ngưỡng, gió, hộ vay)`
+                        }
+                        className="flex min-w-0 flex-1 items-start gap-2.5 text-left"
                       >
-                        <div className="truncate text-[12.5px] font-medium text-ink">
-                          {ex.name} <span className="text-inkDim">({ex.province})</span>
-                        </div>
-                        <div className="truncate font-mono text-[11px] text-inkMuted">
-                          {reason}
+                        <span
+                          className={`w-5 shrink-0 pt-0.5 text-right font-mono text-[12px] font-semibold tabular-nums ${
+                            ai.score >= 70 ? 'text-[#8ACBB5]' : 'text-inkMuted'
+                          }`}
+                        >
+                          {ai.score}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[12.5px]">
+                            <span className="font-medium text-ink">{ex.name}</span>{' '}
+                            <span className="text-inkDim">&middot; {ex.province}</span>
+                          </div>
+                          <div className="mt-0.5 truncate font-mono text-[11px] text-inkMuted tabular-nums">
+                            {reason} &middot; {isEn ? 'Prov' : 'DP'}{' '}
+                            {formatVndBillions(ai.provisionAtRiskM, lang)}
+                          </div>
                         </div>
                       </button>
                       <div className="flex shrink-0 items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => onSelectCommune(ex.gid_3)}
-                          className="inline-flex h-8 items-center rounded-[6px] border border-[#8ACBB5] bg-[#161C26] px-2.5 text-[12px] font-medium text-[#CDECD7] transition-colors hover:border-[#CDECD7] hover:bg-[#8ACBB5]/15 hover:text-white"
+                          className="inline-flex h-7 items-center rounded-[4px] border border-lineStrong bg-transparent px-2 text-[11.5px] font-medium text-inkMuted transition-colors hover:border-inkDim hover:text-ink"
                         >
-                          Mở giấy
+                          {isEn ? 'Brief' : 'Hồ sơ'}
                         </button>
                         <button
                           type="button"
                           onClick={() => onResolveException(ex.gid_3)}
-                          className={`h-8 rounded-[6px] px-2.5 text-[12px] font-semibold transition-colors ${
+                          className={`h-7 rounded-[4px] px-2.5 text-[11.5px] font-semibold transition-colors ${
                             done
-                              ? 'bg-[#8ACBB5] text-[#0E1F1A] shadow-sm'
+                              ? 'border border-lineStrong bg-panelAlt text-[#8ACBB5]'
                               : 'bg-[#CDECD7] text-[#0E1F1A] hover:bg-[#D8F1E0]'
                           }`}
                         >
-                          {done ? '✓ Đã duyệt' : 'Duyệt'}
+                          {done
+                            ? isEn
+                              ? '✓ Approved'
+                              : '✓ Đã duyệt'
+                            : isEn
+                            ? 'Approve'
+                            : 'Duyệt'}
                         </button>
                       </div>
                     </div>
                   );
                 })}
               </div>
+              )}
             </div>
           )
         )}
 
         {activeTab === 'stations' && (
           <div className="space-y-3">
-            <div className="flex items-start gap-2 rounded-[6px] border border-lineStrong bg-canvas p-2.5 text-[12px] text-inkMuted">
+            <div className="flex items-start gap-2 rounded-[4px] border border-lineStrong bg-canvas p-2.5 text-[11.5px] text-inkMuted">
               <Waves className="mt-0.5 h-4 w-4 shrink-0 text-inkMuted" strokeWidth={1.75} />
               <div>
-                <b className="font-medium text-ink">Mực nước lũ tại 11 trạm thủy văn (QĐ 05/2020/QĐ-TTg):</b>{' '}
-                10/11 trạm vượt Báo động 3 từ 10–12/09/2024. Trạm Hà Nội đạt 11,30m (dưới BĐ3 0,20m). Dữ liệu giữ nguyên ở cấp trạm vì chưa có bảng nối trạm &rarr; mã xã.
+                <b className="font-medium text-ink">
+                  {isEn ? '11 Gauges (Dec. 05):' : '11 trạm thủy văn (QĐ 05):'}
+                </b>{' '}
+                {isEn
+                  ? '10/11 exceeded AL3 (10–12 Sep); Hanoi peaked 11.30m (< AL3 0.20m). Kept at station level.'
+                  : '10/11 trạm vượt BĐ3 (10–12/09); Hà Nội 11,30m (dưới BĐ3 0,20m). Dữ liệu cấp trạm.'}
               </div>
             </div>
 
@@ -757,10 +1262,18 @@ export function OperationalDrawer({
               <table className="w-full border-collapse text-left text-[12px]">
                 <thead className="border-b border-line text-inkDim">
                   <tr>
-                    <th className="px-2.5 py-2 font-medium">Trạm / Sông</th>
-                    <th className="px-2 py-2 text-right font-medium">Đỉnh (m)</th>
-                    <th className="px-2 py-2 text-right font-medium">BĐ3</th>
-                    <th className="px-2.5 py-2 text-right font-medium">Đỉnh theo ngày</th>
+                    <th className="px-2.5 py-2 font-medium">
+                      {isEn ? 'Station / River' : 'Trạm / Sông'}
+                    </th>
+                    <th className="px-2 py-2 text-right font-medium">
+                      {isEn ? 'Peak (m)' : 'Đỉnh (m)'}
+                    </th>
+                    <th className="px-2 py-2 text-right font-medium">
+                      {isEn ? 'AL3' : 'BĐ3'}
+                    </th>
+                    <th className="px-2.5 py-2 text-right font-medium">
+                      {isEn ? 'Status at Date' : 'Đỉnh theo ngày'}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -774,7 +1287,7 @@ export function OperationalDrawer({
                         <td className="px-2.5 py-1.5">
                           <div className="font-medium text-ink">{s.station}</div>
                           <div className="text-[11px] text-inkDim">
-                            Sông {s.river} · {s.province}
+                            {isEn ? 'River' : 'Sông'} {s.river} · {s.province}
                           </div>
                         </td>
                         <td className="px-2.5 py-1.5 text-right font-mono text-ink tabular-nums">
@@ -785,14 +1298,27 @@ export function OperationalDrawer({
                         </td>
                         <td className="px-2.5 py-1.5 text-right font-mono text-[11px]">
                           {s.r2_triggered === 0 ? (
-                            <span className="text-inkDim">BĐ2 (dưới BĐ3)</span>
+                            <span className="inline-flex items-center gap-1.5 text-[#ffcd8e]/85">
+                              <span
+                                className="h-1.5 w-1.5 rounded-full"
+                                style={{ backgroundColor: SIGNAL_COLORS.r1Light }}
+                              />
+                              <span>{isEn ? 'AL2 (< AL3)' : 'BĐ2 (dưới BĐ3)'}</span>
+                            </span>
                           ) : activeAtDate ? (
-                            <span className="text-ink">
-                              &gt;BĐ3 · {s.peak_time_ict.slice(5, 16)}
+                            <span className="inline-flex items-center gap-1.5 font-medium text-[#ff8ca1]">
+                              <span
+                                className="h-1.5 w-1.5 rounded-full"
+                                style={{ backgroundColor: SIGNAL_COLORS.r2Alert }}
+                              />
+                              <span>
+                                &gt;{isEn ? 'AL3' : 'BĐ3'} · {s.peak_time_ict.slice(5, 16)}
+                              </span>
                             </span>
                           ) : (
                             <span className="text-inkDim">
-                              Chờ {s.peak_time_ict.slice(8, 10)}/{s.peak_time_ict.slice(5, 7)}
+                              {isEn ? 'Pending' : 'Chờ'} {s.peak_time_ict.slice(8, 10)}/
+                              {s.peak_time_ict.slice(5, 7)}
                             </span>
                           )}
                         </td>
@@ -811,7 +1337,9 @@ export function OperationalDrawer({
             <div>
               <div className="mb-1.5 flex items-center justify-between">
                 <span className="text-[12px] font-medium text-ink">
-                  Open API Payload (TT 64/2024 · NĐ 346/2026 Bảo hiểm chỉ số)
+                  {isEn
+                    ? 'Open API Payload (Cir. 64/2024 · Dec. 346/2026 Parametric)'
+                    : 'Open API Payload (TT 64/2024 · NĐ 346/2026 Bảo hiểm chỉ số)'}
                 </span>
                 <button
                   type="button"
@@ -819,7 +1347,15 @@ export function OperationalDrawer({
                   className="inline-flex h-6 items-center gap-1 rounded-[3px] border border-line bg-transparent px-2 text-[11px] text-inkMuted hover:border-lineStrong hover:text-ink"
                 >
                   <Copy className="h-3 w-3" strokeWidth={1.75} />
-                  <span>{copiedJson ? 'Đã chép' : 'Sao chép'}</span>
+                  <span>
+                    {copiedJson
+                      ? isEn
+                        ? 'Copied'
+                        : 'Đã chép'
+                      : isEn
+                      ? 'Copy'
+                      : 'Sao chép'}
+                  </span>
                 </button>
               </div>
               <pre className="max-h-[210px] overflow-auto rounded-[6px] border border-lineStrong bg-canvas p-2.5 font-mono text-[11px] leading-relaxed text-[#CBD5E1]">
@@ -830,16 +1366,26 @@ export function OperationalDrawer({
             {/* 12-Province Live NHNN Quarterly Table computed from 2,895 JSON */}
             <div>
               <div className="mb-1.5 text-[12px] font-medium text-ink">
-                Tổng hợp báo cáo 12 tỉnh gửi NHNN (tính trực tiếp từ 2.895 xã)
+                {isEn
+                  ? '12-Province SBV Summary (computed live from 2,895 communes)'
+                  : 'Tổng hợp báo cáo 12 tỉnh gửi NHNN (tính trực tiếp từ 2.895 xã)'}
               </div>
               <div className="max-h-[220px] overflow-y-auto rounded-[6px] border border-lineStrong bg-canvas">
                 <table className="w-full border-collapse text-left text-[11.5px]">
                   <thead className="sticky top-0 bg-panel text-inkDim">
                     <tr>
-                      <th className="border-b border-line px-2.5 py-1.5 font-medium">Tỉnh</th>
-                      <th className="border-b border-line px-2 py-1.5 text-right font-medium">Số xã</th>
-                      <th className="border-b border-line px-2 py-1.5 text-right font-medium">R1 mưa</th>
-                      <th className="border-b border-line px-2.5 py-1.5 text-right font-medium">UNOSAT &ge;5%</th>
+                      <th className="border-b border-line px-2.5 py-1.5 font-medium">
+                        {isEn ? 'Province' : 'Tỉnh'}
+                      </th>
+                      <th className="border-b border-line px-2 py-1.5 text-right font-medium">
+                        {isEn ? 'Communes' : 'Số xã'}
+                      </th>
+                      <th className="border-b border-line px-2 py-1.5 text-right font-medium">
+                        {isEn ? 'R1 Rain' : 'R1 mưa'}
+                      </th>
+                      <th className="border-b border-line px-2.5 py-1.5 text-right font-medium">
+                        UNOSAT &ge;5%
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line font-mono tabular-nums text-inkMuted">
@@ -868,22 +1414,33 @@ function SignalRow({
   label,
   value,
   status,
-  tone,
+  dotColor,
+  mutedStatus = false,
 }: {
   label: string;
   value: string;
   status: string;
-  tone: 'alert' | 'warn' | 'info' | 'neutral';
+  dotColor?: string;
+  mutedStatus?: boolean;
 }) {
-  const toneClass = tone === 'neutral' ? 'text-inkMuted' : 'text-ink';
-
   return (
     <div className="flex items-center justify-between gap-2 px-3 py-1.5">
-      <span className="text-inkDim">{label}</span>
+      <span className="inline-flex items-center gap-2 text-inkDim">
+        <span
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ backgroundColor: dotColor ?? '#3E4A5F' }}
+        />
+        <span>{label}</span>
+      </span>
       <div className="flex items-center gap-2 font-mono text-[11.5px] tabular-nums">
         <span className="font-medium text-ink">{value}</span>
         <span className="text-white/[0.12]">|</span>
-        <span className={toneClass}>{status}</span>
+        <span
+          style={dotColor && !mutedStatus ? { color: dotColor } : undefined}
+          className={dotColor && !mutedStatus ? 'font-medium' : 'text-inkMuted'}
+        >
+          {status}
+        </span>
       </div>
     </div>
   );
