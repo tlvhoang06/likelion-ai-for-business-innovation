@@ -179,7 +179,7 @@ export function OperationalDrawer({
         },
         r2_river_qd05: {
           status: 'STATION_LEVEL_ONLY_PENDING_GID3_CROSSWALK',
-          b5_stations_above_bd3: stations.filter((s) => isStationActiveAtDate(s, dateStr))
+          stations_above_bd3: stations.filter((s) => isStationActiveAtDate(s, dateStr))
             .length,
         },
         r3_wind: {

@@ -185,7 +185,7 @@ export function YagiMap({
 
     map.attributionControl.setPrefix(false);
     map.attributionControl.addAttribution(
-      'Ranh giới GADM v4.1 (2.895 xã) &middot; Kiểm chứng UNOSAT 3966 &amp; NCHMF B5'
+      'Ranh giới GADM v4.1 (2.895 xã) &middot; Kiểm chứng UNOSAT 3966 &amp; Khí tượng Thủy văn'
     );
 
     // Subtle 1-degree cartographic graticule lines directly on dark matte canvas (zero external API-key watermark)

@@ -827,7 +827,7 @@ function executeGetRiverStationsTool(stations: RiverStationR2[], dateStr: string
     total_stations: stations.length,
     active_exceeded_bd3_at_date: active.filter((s) => s.peak_m >= s.bd3_m).length,
     crosswalk_limitation:
-      'River gauges lack verified station-to-GID_3 commune crosswalks in current B5 data; treat as basin context only.',
+      'River gauges lack verified station-to-GID_3 commune crosswalks in current hydrological data; treat as basin context only.',
     stations: stations.map((s) => ({
       station: s.station,
       river: s.river,
@@ -1461,7 +1461,7 @@ const GEMINI_TOOL_DECLARATIONS = [
   {
     name: 'get_river_stations',
     description:
-      'Retrieve verified B5 hydrological river gauge peaks and Alert Level 3 (BĐ3) status at the current timeline date.',
+      'Retrieve verified NCHMF hydrological river gauge peaks and Alert Level 3 (BĐ3) status at the current timeline date.',
     parameters: {
       type: 'OBJECT',
       properties: {

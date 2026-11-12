@@ -43,8 +43,8 @@ const SIGNAL_ENTRIES: GlossaryEntry[] = [
     color: SIGNAL_COLORS.r2Alert,
     titleVi: 'R2 · Mực nước trạm thủy văn (BĐ3)',
     titleEn: 'R2 · River Station Stage (AL3)',
-    ruleVi: '11 trạm B5 Bắc Bộ (QĐ 05/2020) · 10/11 đỉnh vượt Báo động 3',
-    ruleEn: '11 Northern B5 gauges (Dec.05) · 10/11 peaks above Alert Level 3',
+    ruleVi: '11 trạm thủy văn Bắc Bộ (QĐ 05/2020) · 10/11 đỉnh vượt Báo động 3',
+    ruleEn: '11 Northern NCHMF gauges (Dec.05) · 10/11 peaks above Alert Level 3',
     meaningVi:
       'Theo dõi đỉnh lũ sông Cầu, Thương, Lục Nam, Thái Bình, Hồng, Hoàng Long trong tab Mực nước.',
     meaningEn:

@@ -32,8 +32,8 @@ export function VerificationModal({ lang, open, onClose, communes }: Verificatio
             </h2>
             <p className="mt-0.5 text-[12px] text-inkMuted">
               {lang === 'en'
-                ? 'Direct benchmark across 2,895 GADM v4.1 communes vs. UNOSAT 3966 flood extent & 11 river gauges'
-                : 'Đối chiếu trực tiếp 2.895 xã GADM v4.1 với ảnh ngập vệ tinh UNOSAT 3966 và 11 trạm thủy văn B5'}
+                ? 'Direct benchmark across 2,895 GADM v4.1 communes vs. UNOSAT 3966 flood extent & 11 NCHMF river gauges'
+                : 'Đối chiếu trực tiếp 2.895 xã GADM v4.1 với ảnh ngập vệ tinh UNOSAT 3966 và 11 trạm thủy văn Bắc Bộ'}
             </p>
           </div>
           <button
@@ -184,8 +184,8 @@ export function VerificationModal({ lang, open, onClose, communes }: Verificatio
                     <td className="px-3 py-2 font-mono text-ink">QĐ 05/2020/QĐ-TTg</td>
                     <td className="px-3 py-2">
                       {lang === 'en'
-                        ? 'Flood Alarm Level 3 across 11 hydrology stations (10 above AL3; Hanoi gauge 11.30m was 0.20m below AL3). Kept at station level until gauge-to-GID_3 crosswalk exists.'
-                        : 'Mốc báo động lũ cấp 3 (BĐ3) tại 11 trạm thủy văn B5 (10 trạm vượt BĐ3, trạm Hà Nội 11,30m dưới BĐ3 0,20m). Giữ R2 ở cấp trạm cho đến khi có crosswalk trạm–GID_3 xã.'}
+                        ? 'Flood Alarm Level 3 across 11 NCHMF hydrology stations (10 above AL3; Hanoi gauge 11.30m was 0.20m below AL3). Kept at station level until gauge-to-GID_3 crosswalk exists.'
+                        : 'Mốc báo động lũ cấp 3 (BĐ3) tại 11 trạm thủy văn Bắc Bộ (10 trạm vượt BĐ3, trạm Hà Nội 11,30m dưới BĐ3 0,20m). Giữ R2 ở cấp trạm cho đến khi có crosswalk trạm–GID_3 xã.'}
                     </td>
                   </tr>
                   <tr>
