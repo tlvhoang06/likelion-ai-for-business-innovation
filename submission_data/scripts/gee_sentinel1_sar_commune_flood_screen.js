@@ -1,6 +1,9 @@
-// ResiLend — Sentinel-1 SAR Commune-Level Flood Screen (Google Earth Engine)
-// Follows UN-SPIDER Sentinel-1 VH backscatter change detection across 2,895 GADM v4.1 communes.
-// Cutoffs: >=5% of cropland+built-up land (slope <= 5 deg, non-permanent water) and >=95% valid descending pass coverage.
+// EK15 B6 — Typhoon Yagi flood reference, GADM v4.1 communes
+// Method follows UN-SPIDER Sentinel-1 change detection; project cutoffs are
+// 5% of cropland+built land and >=95% valid S1 coverage.
+// The two pass directions are never mixed; descending is the primary output.
+// Keep every relative orbit within that direction so the full commune AOI is
+// covered; the paired valid mask requires both windows at each scored pixel.
 
 var COMMUNES_ASSET = 'projects/resilend/assets/communes_gadm41_12prov';
 var PRE_START = '2024-08-20';
@@ -25,6 +28,8 @@ var pixelArea = ee.Image.pixelArea();
 
 function smoothVH(image) {
   var vhDb = image.select('VH');
+  // COPERNICUS/S1_GRD is in dB. UN-SPIDER smooths the dB mosaics and applies
+  // after.divide(before) with its trial-and-error 1.25 cutoff; keep that recipe.
   return vhDb.focalMean(50, 'circle', 'meters')
     .updateMask(vhDb.mask())
     .rename('VH')
@@ -44,6 +49,12 @@ function collectionFor(pass, start, end) {
 function floodForPass(pass) {
   var beforeCollection = collectionFor(pass, PRE_START, PRE_END);
   var afterCollection = collectionFor(pass, POST_START, POST_END);
+  print(pass + ' before/after image counts', beforeCollection.size(), afterCollection.size());
+  print(pass + ' before acquisition dates', beforeCollection.aggregate_array('system:time_start')
+    .map(function(t) { return ee.Date(t).format('YYYY-MM-dd HH:mm'); }));
+  print(pass + ' after acquisition dates', afterCollection.aggregate_array('system:time_start')
+    .map(function(t) { return ee.Date(t).format('YYYY-MM-dd HH:mm'); }));
+
   var before = beforeCollection.map(smoothVH).median();
   var after = afterCollection.map(smoothVH).median();
   var valid = before.mask().and(after.mask()).and(eligibleLand);
@@ -86,6 +97,7 @@ function nOrZero(value) {
 }
 
 function addPassMetrics(feature, pass) {
+  // reduceRegions with a single-output reducer keeps each input band name.
   var eligible = nOrZero(feature.get('ELIGIBLE_M2'));
   var valid = nOrZero(feature.get(pass + '_VALID_M2'));
   var flood = nOrZero(feature.get(pass + '_FLOOD_M2'));
@@ -115,6 +127,24 @@ var results = sums.map(function(feature) {
   return addPassMetrics(feature, 'DESCENDING');
 });
 
+// Do not synchronously aggregate coverage/label counts in the Code Editor:
+// those requests time out over 2,895 complex commune geometries. The single
+// table export below computes the same per-commune measures asynchronously;
+// calculate counts from its downloaded CSV instead.
+print('ASCENDING images (diagnostic only)',
+  collectionFor('ASCENDING', PRE_START, PRE_END).size(),
+  collectionFor('ASCENDING', POST_START, POST_END).size());
+print('GADM feature count (must equal 2895)', communes.size());
+
+var mainFlood = descending.flood;
+var mainBefore = descending.before;
+var mainAfter = descending.after;
+Map.centerObject(communes, 7);
+Map.addLayer(mainBefore, {min: -25, max: 0}, MAIN_PASS + ' pre-event VH dB');
+Map.addLayer(mainAfter, {min: -25, max: 0}, MAIN_PASS + ' post-event VH dB');
+Map.addLayer(mainFlood.selfMask(), {palette: ['#1769ff']}, MAIN_PASS + ' potential flood mask');
+Map.addLayer(communes.style({color: '777777', fillColor: '00000000', width: 1}), {}, 'GADM v4.1 commune boundaries');
+
 var outputProperties = [
   'GID_3', 'NAME_3', 'NAME_1',
   'ELIGIBLE_M2',
@@ -125,9 +155,9 @@ var outputProperties = [
 
 Export.table.toDrive({
   collection: results.select(outputProperties),
-  description: 'GADM41_Yagi_S1_metrics_UNSPIDER_dB_ALL_ORBITS_v2',
-  folder: 'ResiLend_Yagi_Outputs',
-  fileNamePrefix: '08_Sentinel1_SAR_Flood_Screen_2895_Communes',
+  description: 'B6_GADM41_Yagi_S1_metrics_UNSPIDER_dB_ALL_ORBITS_v2',
+  folder: 'EK15_B5_B7',
+  fileNamePrefix: 'B6_GADM41_Yagi_S1_metrics_UNSPIDER_dB_ALL_ORBITS_v2',
   fileFormat: 'CSV'
 });
 

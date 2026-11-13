@@ -1,6 +1,5 @@
-// ResiLend — UNOSAT Product 3966 Commune-Level Flood Benchmark (Google Earth Engine)
-// Evaluates UNOSAT 12 September 2024 Red River Delta flood extent across 2,895 GADM v4.1 communes.
-// Eligible land mask: ESA WorldCover 2021 cropland (40) + built-up (50), slope <= 5 deg, excluding JRC permanent water (>=11 months).
+// UNOSAT 3966 is the primary B6 reference; Sentinel-1 metrics remain a separate proxy.
+// Upload the analysis and valid flood extent ZIPs under the asset IDs below first.
 
 var COMMUNES_ASSET = 'projects/resilend/assets/communes_gadm41_12prov';
 var ANALYSIS_ASSET = 'projects/resilend/assets/UNOSAT_3966_AnalysisExtent_RedRiverDelta_20240912';
@@ -12,6 +11,8 @@ var FLOOD_LAND_CUTOFF_PCT = 5;
 var communes = ee.FeatureCollection(COMMUNES_ASSET);
 var analysisExtent = ee.FeatureCollection(ANALYSIS_ASSET);
 var floodExtent = ee.FeatureCollection(FLOOD_ASSET);
+// var analysisGeometry = analysisExtent.geometry();
+// var floodGeometry = floodExtent.geometry();
 var worldCover = ee.Image('ESA/WorldCover/v200/' + LAND_COVER_YEAR).select('Map');
 var eligible = worldCover.eq(40).or(worldCover.eq(50));
 var permanentWater = ee.Image('JRC/GSW1_4/GlobalSurfaceWater')
@@ -81,9 +82,8 @@ Export.table.toDrive({
     'UNOSAT_FLOOD_PCT_ANALYZED_LAND', 'UNOSAT_FLOOD_LABEL_95_5',
     'UNOSAT_REFERENCE_STATUS'
   ]),
-  description: 'UNOSAT_GADM41_Yagi_20240912_reference_by_commune',
-  folder: 'ResiLend_Yagi_Outputs',
-  fileNamePrefix: '07_UNOSAT_3966_Flood_Benchmark_2895_Communes',
+  description: 'B6_UNOSAT_GADM41_Yagi_20240912_reference_by_commune',
+  folder: 'EK15_B5_B7',
+  fileNamePrefix: 'B6_UNOSAT_GADM41_Yagi_20240912_reference_by_commune',
   fileFormat: 'CSV'
 });
-

@@ -4,8 +4,8 @@ import csv
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-SOURCE = HERE / "08_Sentinel1_SAR_Flood_Screen_2895_Communes_raw.csv"
-OUTPUT = HERE / "08_Sentinel1_SAR_Flood_Screen_2895_Communes.csv"
+SOURCE = HERE / "B6_GADM41_Yagi_S1_metrics_UNSPIDER_dB_ALL_ORBITS_v2_raw.csv"
+OUTPUT = HERE / "B6_GADM41_Yagi_S1_metrics_UNSPIDER_dB_ALL_ORBITS_v2.csv"
 FIELDS = [
     "GID_3",
     "NAME_3",

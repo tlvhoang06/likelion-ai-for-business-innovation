@@ -1,8 +1,7 @@
-"""Prepare Earth Engine upload ZIPs from the official UNOSAT 3966 Shapefile.
+"""Prepare Earth Engine upload ZIPs from the official UNOSAT 3966 SHP.
 
-The downloaded source ZIP is never modified. The flood geometry is repaired
-in a separate working directory while preserving original feature attributes
-and verifying area invariance (< 1e-6 relative delta).
+The downloaded source ZIP is never modified. The flood geometry is made valid
+in a separate working directory, preserving the original feature attributes.
 """
 
 from pathlib import Path
@@ -58,4 +57,3 @@ print(f"Analysis upload: {analysis_zip.name} ({analysis_zip.stat().st_size:,} by
 print(f"Flood upload: {flood_zip.name} ({flood_zip.stat().st_size:,} bytes)")
 print(f"Flood geometry valid: {flood.geometry.is_valid.all()}; components: {len(flood.geometry.iloc[0].geoms)}")
 print(f"Flood area before/after repair: {source_area_m2:.2f} / {repaired_area_m2:.2f} m²")
-
