@@ -122,6 +122,7 @@ export function SignalGlossaryModal({
       onClick={onClose}
     >
       <div
+        data-tour="glossary-modal"
         className="max-h-[88vh] w-full max-w-[780px] overflow-y-auto rounded-[6px] border border-lineStrong bg-panel text-ink shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >

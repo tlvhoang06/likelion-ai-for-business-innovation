@@ -138,7 +138,7 @@ export default function App() {
 
   const dataReady = Boolean(geojson && communes.length > 0);
 
-  // Synchronize interactive app state for each guided walkthrough step (toggling R1/R3 layers, clicking a province/commune, opening UBND brief & legal modal)
+  // Synchronize interactive app state for each guided walkthrough step (toggling R1/R2/R3 layers, clicking a province/commune, opening UBND brief & signal glossary modal)
   useEffect(() => {
     if (!tourOpen || !dataReady) return;
     const step = WALKTHROUGH_STEPS[tourStepIdx];
@@ -148,6 +148,7 @@ export default function App() {
 
     if (step.id === 'map') {
       setAuditOpen(false);
+      setGlossaryOpen(false);
       setPendingDeferral(null);
       setSelectedGid(null);
       setActiveTab('bank');
@@ -171,24 +172,29 @@ export default function App() {
       );
     } else if (step.id === 'drill') {
       setAuditOpen(false);
+      setGlossaryOpen(false);
       setLayers(DEFAULT_LAYERS);
       setActiveTab('bank');
       setSelectedGid(DEMO_TOUR_COMMUNE_GID);
     } else if (step.id === 'timeline') {
       setAuditOpen(false);
+      setGlossaryOpen(false);
       setSelectedGid(null);
       setLayers(DEFAULT_LAYERS);
       setActiveTab('bank');
     } else if (step.id === 'deferral') {
       setAuditOpen(false);
+      setGlossaryOpen(false);
       setSelectedGid(null);
       setActiveTab('bank');
     } else if (step.id === 'ai') {
       setAuditOpen(false);
+      setGlossaryOpen(false);
       setSelectedGid(null);
       setActiveTab('ai');
     } else if (step.id === 'ubnd-brief') {
       setAuditOpen(false);
+      setGlossaryOpen(false);
       setActiveTab('ubnd');
       setSelectedGid(null);
       timers.push(
@@ -196,10 +202,11 @@ export default function App() {
           setSelectedGid(DEMO_TOUR_COMMUNE_GID);
         }, 1400)
       );
-    } else if (step.id === 'legal') {
+    } else if (step.id === 'glossary') {
+      setAuditOpen(false);
       setSelectedGid(null);
       setActiveTab('bank');
-      setAuditOpen(true);
+      setGlossaryOpen(true);
     }
 
     return () => {

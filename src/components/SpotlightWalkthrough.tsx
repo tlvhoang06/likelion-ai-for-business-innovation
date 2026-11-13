@@ -81,15 +81,15 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
       'Lists flooded communes then opens Vũ Xá’s attestation brief: one signature validates all 140 loans without per-household forms.',
   },
   {
-    id: 'legal',
-    targets: ['legal-modal'],
+    id: 'glossary',
+    targets: ['glossary-modal'],
     preferredPlacement: 'side-compact',
-    titleVi: 'Kiểm chứng thực nghiệm & Pháp lý',
-    titleEn: 'Empirical Audit & Legal Basis',
+    titleVi: 'Giải thích chỉ số & Quy trình 2 tầng',
+    titleEn: 'Signal Guide & 2-Stage Workflow',
     bodyVi:
-      'Tách biệt Cảnh báo sớm R1|R2|R3 (27,35% Prec / 91,23% Rec) và Hậu kiểm Sentinel-1 (63,46% / 79,11%) trước khi gửi đề xuất 1-Chạm, cùng căn cứ TT 29/2025, NĐ 86/2024, QĐ 18/2021 và NĐ 346/2026.',
+      'Tra cứu nhanh R1 Mưa, R2 Lũ sông (215 xã BĐ3), R3 Gió Theo dõi, UNOSAT 3966, Sentinel-1 hậu kiểm trước 1-Chạm và 4 văn bản pháp lý (TT 29/2025, NĐ 86/2024, QĐ 18/2021, QĐ 05/2020) — mở lại từ nút "Giải thích chỉ số" ở góc phải trên.',
     bodyEn:
-      'Separates R1|R2|R3 early alert (27.35% Prec / 91.23% Rec) from post-event S1 confirmation (63.46% / 79.11%) before 1-Tap dispatch, mapped to Cir. 29/2025, Dec. 86/2024, and Dec. 18/2021.',
+      'Quick reference for R1 Rain, R2 River (215 AL3 communes), R3 Watchlist, UNOSAT 3966, post-event Sentinel-1 confirmation before 1-Tap offers, and 4 key regulations — reopen anytime from "Signal Guide" above.',
   },
 ];
 
