@@ -25,6 +25,7 @@ import {
 } from '../utils/yagiLogic';
 import {
   filterAiExceptionQueue,
+  getWorkflowTrack,
   type CommuneAiAssessment,
   type WhatIfSummary,
   type AiWorkspaceAction,
@@ -108,6 +109,9 @@ export function OperationalDrawer({
   onClearAiHighlights,
 }: OperationalDrawerProps) {
   const [copiedJson, setCopiedJson] = useState(false);
+  const [exQueueFilter, setExQueueFilter] = useState<
+    'all' | 'watchlist_ml' | 'unflagged_ml' | 'outside_scan'
+  >('all');
 
   const signalEval = c ? evaluateCommuneAtDate(c, dateStr, layers) : null;
   const selectedAi = c ? assessments.get(c.gid_3) ?? null : null;
@@ -125,12 +129,50 @@ export function OperationalDrawer({
     [communes]
   );
 
-  // AI-ranked W3 exception queue dynamically synced with aiThreshold slider
+  // AI-ranked W3 exception queue dynamically synced with aiThreshold slider & quick triage filters
   const exceptionSummary = useMemo(
     () => filterAiExceptionQueue(communes, assessments, aiThreshold, 40),
     [communes, assessments, aiThreshold]
   );
-  const exceptionQueue = exceptionSummary.items;
+
+  const mlPoolBuckets = useMemo(() => {
+    const wl = communes
+      .filter((x) => getWorkflowTrack(x) === 'watchlist_r3_only' && x.s2_ml_confirm === true)
+      .sort((a, b) => (b.s2_ml_prob ?? 0) - (a.s2_ml_prob ?? 0))
+      .map((commune) => ({ commune, ai: assessments.get(commune.gid_3)! }))
+      .filter((x) => Boolean(x.ai));
+    const unfl = communes
+      .filter((x) => getWorkflowTrack(x) === 'unflagged_early' && x.s2_ml_confirm === true)
+      .sort((a, b) => (b.s2_ml_prob ?? 0) - (a.s2_ml_prob ?? 0))
+      .map((commune) => ({ commune, ai: assessments.get(commune.gid_3)! }))
+      .filter((x) => Boolean(x.ai));
+    const outScan = exceptionSummary.items.filter(
+      (x) => x.commune.unosat_status !== 'CLASSIFIABLE'
+    );
+    return {
+      watchlistMl: wl,
+      unflaggedMl: unfl,
+      outsideScan: outScan,
+    };
+  }, [communes, assessments, exceptionSummary.items]);
+
+  const exceptionQueue =
+    exQueueFilter === 'watchlist_ml'
+      ? mlPoolBuckets.watchlistMl.slice(0, 40)
+      : exQueueFilter === 'unflagged_ml'
+      ? mlPoolBuckets.unflaggedMl.slice(0, 40)
+      : exQueueFilter === 'outside_scan'
+      ? mlPoolBuckets.outsideScan
+      : exceptionSummary.items;
+
+  const exceptionMatchingCount =
+    exQueueFilter === 'watchlist_ml'
+      ? mlPoolBuckets.watchlistMl.length
+      : exQueueFilter === 'unflagged_ml'
+      ? mlPoolBuckets.unflaggedMl.length
+      : exQueueFilter === 'outside_scan'
+      ? mlPoolBuckets.outsideScan.length
+      : exceptionSummary.totalMatching;
 
   const provinceStats = useMemo(() => computeProvinceStats(communes), [communes]);
 
@@ -159,6 +201,14 @@ export function OperationalDrawer({
           ai_assisted_recall_pct: Number(whatIf.aiRecallPct.toFixed(1)),
           extra_flooded_communes_flagged: whatIf.aiExtraFloodedCaught,
           outside_unosat_candidates: whatIf.outsideBlindSpotFlagged,
+        },
+        stage2_ml_cv_benchmark: {
+          model: 'HistGradientBoostingClassifier_GroupKFold4',
+          classifiable_communes: 2540,
+          outside_cv_unknown_communes: 355,
+          cv_precision_pct: 63.46,
+          cv_recall_pct: 79.11,
+          note: 'Post-event confirmation gate only (Sentinel-1 08-21 Sep + R2 + R1 + HAND); never early-alert accuracy',
         },
         simulated_portfolio_loans: stats.triggeredLoans,
         campaign_1tap_dispatched: campaignLaunched,
@@ -189,7 +239,7 @@ export function OperationalDrawer({
           station: c.r2_station ?? null,
           river: c.r2_river ?? null,
           distance_km: c.r2_distance_km ?? null,
-          hand_le10_pct: c.r2_hand_le10_pct ?? null,
+          hand_le10_pct: c.hand_le10_pct ?? c.r2_hand_le10_pct ?? null,
           first_bd3_bulletin_ict: c.r2_first_bulletin_ict ?? null,
           peak_time_ict: c.r2_peak_time_ict ?? null,
           assignment_status: c.r2_status ?? 'NO_SELECTED_NAMED_RIVER_LINE_INTERSECTION',
@@ -201,7 +251,7 @@ export function OperationalDrawer({
             ? 'PRIORITY_REVIEW_R1_OR_R2_CONFIRM_BEFORE_1TAP'
             : signalEval.r3On
             ? 'WATCHLIST_R3_WIND_ONLY_NEEDS_CONFIRMATION'
-            : 'MONITORING',
+            : 'UNFLAGGED_EARLY_EXCEPTION_CHECK',
         r3_wind: {
           threshold: layers.useR64 ? 'R64' : 'R50',
           triggered: signalEval.r3On,
@@ -212,6 +262,20 @@ export function OperationalDrawer({
         unosat_3966_status: c.unosat_status,
         unosat_flood_pct: c.unosat_flood_pct,
         sentinel1_flood_pct: c.s1_flood_pct,
+        sentinel1_cov_pct: c.s1_cov_pct ?? null,
+        hand_le10_pct: c.hand_le10_pct ?? c.r2_hand_le10_pct ?? null,
+      },
+      stage2_ml_confirmation: {
+        model: 'HistGradientBoostingClassifier_CV',
+        post_event_window: '2024-09-08_to_2024-09-21',
+        prob: c.s2_ml_prob ?? null,
+        confirmed: c.s2_ml_confirm ?? null,
+        cv_fold: c.s2_ml_fold ?? null,
+        cv_cutoff: c.s2_ml_cutoff ?? null,
+        coverage_note:
+          c.s2_ml_prob != null
+            ? 'CLASSIFIABLE_2540_CV'
+            : 'NULL_OUTSIDE_UNOSAT_SCAN',
       },
       ai_basis_risk_triage: selectedAi
         ? {
@@ -436,6 +500,37 @@ export function OperationalDrawer({
                   ? SIGNAL_COLORS.s1
                   : undefined
               }
+            />
+            <SignalRow
+              label={isEn ? 'Stage-2 ML (S1+HAND)' : 'ML Tầng 2 (S1+HAND)'}
+              value={
+                c.s2_ml_prob != null
+                  ? `${(c.s2_ml_prob * 100).toFixed(1)}% · HAND ${(
+                      c.hand_le10_pct ??
+                      c.r2_hand_le10_pct ??
+                      0
+                    ).toFixed(0)}%`
+                  : `${isEn ? 'No CV' : 'Ngoài CV'} · HAND ${(
+                      c.hand_le10_pct ??
+                      c.r2_hand_le10_pct ??
+                      0
+                    ).toFixed(0)}%`
+              }
+              status={
+                c.s2_ml_prob != null
+                  ? c.s2_ml_confirm
+                    ? isEn
+                      ? `Confirmed (F${c.s2_ml_fold ?? '-'})`
+                      : `Xác nhận (F${c.s2_ml_fold ?? '-'})`
+                    : isEn
+                    ? `Below cutoff (F${c.s2_ml_fold ?? '-'})`
+                    : `Dưới ngưỡng (F${c.s2_ml_fold ?? '-'})`
+                  : isEn
+                  ? 'Unknown (use S1)'
+                  : 'Chưa biết (dùng S1)'
+              }
+              dotColor={c.s2_ml_confirm === true ? '#98c127' : undefined}
+              mutedStatus={c.s2_ml_confirm !== true}
             />
           </div>
         </div>
@@ -670,8 +765,8 @@ export function OperationalDrawer({
                   {isEn ? 'Counter fallback:' : 'Nộp tại quầy:'}
                 </b>{' '}
                 {isEn
-                  ? 'Borrowers without smartphones can still submit paper forms within 10 days.'
-                  : 'Hộ không dùng smartphone vẫn nộp đơn giấy tại quầy trong 10 ngày.'}
+                  ? 'Borrowers without smartphones can still submit paper forms before reaching 10 days overdue.'
+                  : 'Hộ không dùng smartphone vẫn nộp đơn giấy tại quầy trước khi đủ 10 ngày quá hạn.'}
               </div>
             </div>
           ) : (
@@ -876,8 +971,8 @@ export function OperationalDrawer({
               {isUbndSigned && (
                 <div className="rounded-[4px] bg-white/[0.04] px-3 py-2 text-[11.5px] text-[#CBD5E1]">
                   {isEn
-                    ? `Attestation active for all ${c.sim_loans} loans in ${c.name} (no per-household forms needed).`
-                    : `Chứng thư đã hiệu lực cho toàn bộ ${c.sim_loans} hộ tại ${c.name} (miễn giấy từng hộ).`}
+                    ? `Proposed batch attestation active for ${c.sim_loans} loans in ${c.name} (subject to partner bank & UBND acceptance).`
+                    : `Xác nhận đề xuất theo xã đã kích hoạt cho ${c.sim_loans} hộ tại ${c.name} (áp dụng theo chấp thuận ngân hàng & UBND).`}
                 </div>
               )}
             </div>
@@ -885,8 +980,8 @@ export function OperationalDrawer({
             <div className="space-y-3">
               <div className="rounded-[4px] border border-lineStrong bg-canvas px-3 py-2 text-[11.5px] text-inkMuted">
                 {isEn
-                  ? 'Select a commune on the map or below to sign one batch attestation replacing per-household forms.'
-                  : 'Chọn xã trên bản đồ hoặc bên dưới để ký 1 biên bản viễn thám thay giấy từng hộ.'}
+                  ? 'Select a commune on the map or below to preview a proposed batch attestation (subject to partner bank & UBND acceptance).'
+                  : 'Chọn xã trên bản đồ hoặc bên dưới để xem trước phương án xác nhận gộp theo xã (tùy chấp thuận của ngân hàng & UBND).'}
               </div>
               <div className="divide-y divide-line rounded-[4px] border border-lineStrong bg-canvas">
                 {hotspotCommunes.map((h) => {
@@ -972,13 +1067,37 @@ export function OperationalDrawer({
                       {isEn ? 'Draft memo' : 'Nhờ AI viết tờ trình'}
                     </button>
                   </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 font-mono text-[10.5px]">
+                    <span
+                      className={`rounded-[3px] border px-1.5 py-0.5 ${
+                        c.s2_ml_confirm === true
+                          ? 'border-[#98c127]/50 bg-[#98c127]/10 text-[#CDECD7]'
+                          : 'border-lineStrong bg-panelAlt text-inkMuted'
+                      }`}
+                    >
+                      {c.s2_ml_prob != null
+                        ? isEn
+                          ? `Stage-2 ML: ${(c.s2_ml_prob * 100).toFixed(1)}% CV (${
+                              c.s2_ml_confirm ? 'Confirm' : 'Low'
+                            })`
+                          : `ML Tầng 2: ${(c.s2_ml_prob * 100).toFixed(1)}% CV (${
+                              c.s2_ml_confirm ? 'Xác nhận' : 'Dưới ngưỡng'
+                            })`
+                        : isEn
+                        ? 'Stage-2 ML: Unknown (Outside CV)'
+                        : 'ML Tầng 2: Ngoài vùng CV'}
+                    </span>
+                    <span className="rounded-[3px] border border-lineStrong bg-panelAlt px-1.5 py-0.5 text-inkMuted">
+                      HAND ≤10m: {(c.hand_le10_pct ?? c.r2_hand_le10_pct ?? 0).toFixed(1)}%
+                    </span>
+                  </div>
                   <p className="mt-1.5 text-[11.5px] leading-relaxed text-inkMuted">
                     {isEn ? selectedAi.summaryEn : selectedAi.summaryVi}
                   </p>
                   <p className="mt-1 text-[10.5px] leading-snug text-inkDim">
                     {isEn
-                      ? 'Rule-based heuristic triage rank (not a calibrated ML flood probability).'
-                      : 'Điểm heuristic từ quy tắc để xếp thứ tự rà soát (chưa phải xác suất ML hiệu chuẩn).'}
+                      ? '0–100 score orders manual triage; Stage-2 ML is post-event S1+HAND CV (never Day-1 early-alert precision).'
+                      : 'Điểm 0–100 sắp thứ tự rà soát; xác suất ML Tầng 2 là hậu kiểm sau bão (08–21/09), tách khỏi cảnh báo sớm Tầng 1.'}
                   </p>
                   <div className="mt-2 grid grid-cols-4 divide-x divide-line rounded-[4px] border border-lineStrong bg-panelAlt">
                     {selectedAi.factors.map((f) => {
@@ -1197,9 +1316,53 @@ export function OperationalDrawer({
                       : `+${whatIf.aiExtraFloodedCaught} ngập · +${whatIf.outsideBlindSpotFlagged} ngoài ảnh · rà ${whatIf.reviewQueueAdded} xã`}
                   </span>
                   <span className="font-semibold text-ink">
-                    {formatNum(exceptionSummary.totalMatching, lang)}{' '}
-                    {isEn ? 'communes queued' : 'xã trong danh sách'}
+                    {formatNum(exceptionMatchingCount, lang)}{' '}
+                    {isEn ? 'communes in view' : 'xã đang lọc'}
                   </span>
+                </div>
+
+                {/* Quick Triage Filter Bar: Heuristic Score vs Stage-2 ML Pools vs Outside UNOSAT */}
+                <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-line pt-2.5">
+                  {(
+                    [
+                      {
+                        id: 'all',
+                        vi: `Tất cả (${exceptionSummary.totalMatching})`,
+                        en: `All (${exceptionSummary.totalMatching})`,
+                      },
+                      {
+                        id: 'watchlist_ml',
+                        vi: `Watchlist R3·ML (${mlPoolBuckets.watchlistMl.length})`,
+                        en: `Watchlist R3·ML (${mlPoolBuckets.watchlistMl.length})`,
+                      },
+                      {
+                        id: 'unflagged_ml',
+                        vi: `Ngoài R1|R2|R3·ML (${mlPoolBuckets.unflaggedMl.length})`,
+                        en: `Unflagged·ML (${mlPoolBuckets.unflaggedMl.length})`,
+                      },
+                      {
+                        id: 'outside_scan',
+                        vi: `Ngoài UNOSAT (${mlPoolBuckets.outsideScan.length})`,
+                        en: `Out of Scan (${mlPoolBuckets.outsideScan.length})`,
+                      },
+                    ] as const
+                  ).map((pill) => {
+                    const active = exQueueFilter === pill.id;
+                    return (
+                      <button
+                        key={pill.id}
+                        type="button"
+                        onClick={() => setExQueueFilter(pill.id)}
+                        className={`rounded-[3px] border px-2 py-1 text-[10.5px] font-medium transition-colors ${
+                          active
+                            ? 'border-[#98c127]/60 bg-[#98c127]/15 text-[#CDECD7]'
+                            : 'border-lineStrong bg-canvas text-inkMuted hover:border-inkDim hover:text-ink'
+                        }`}
+                      >
+                        {isEn ? pill.en : pill.vi}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1212,7 +1375,10 @@ export function OperationalDrawer({
                   </p>
                   <button
                     type="button"
-                    onClick={() => onChangeAiThreshold(55)}
+                    onClick={() => {
+                      setExQueueFilter('all');
+                      onChangeAiThreshold(55);
+                    }}
                     className="mt-2.5 inline-flex h-7 items-center rounded-[4px] bg-[#CDECD7] px-3 text-[11.5px] font-semibold text-[#0E1F1A] hover:bg-[#D8F1E0]"
                   >
                     {isEn ? 'Reset to ≥ 55' : 'Đặt ngưỡng về 55 điểm'}
@@ -1223,13 +1389,24 @@ export function OperationalDrawer({
                 {exceptionQueue.map(({ commune: ex, ai }) => {
                   const done = !!exceptionsResolved[ex.gid_3];
                   const rainInt = Math.round(ex.rain_mm);
-                  const reason = ai.isBasisRiskMiss
-                    ? isEn
-                      ? `Flood ${ex.unosat_flood_pct?.toFixed(1)}% · Rain ${rainInt}mm`
-                      : `Ngập ${ex.unosat_flood_pct?.toFixed(1)}% · Mưa ${rainInt}mm`
-                    : isEn
-                    ? `Out of scan · Rain ${rainInt}mm`
-                    : `Ngoài UNOSAT · Mưa ${rainInt}mm`;
+                  const mlTag =
+                    ex.s2_ml_prob != null
+                      ? ` · ML ${(ex.s2_ml_prob * 100).toFixed(0)}%`
+                      : ' · CV null';
+                  const handTag =
+                    (ex.hand_le10_pct ?? ex.r2_hand_le10_pct) != null
+                      ? ` · H${(ex.hand_le10_pct ?? ex.r2_hand_le10_pct ?? 0).toFixed(0)}%`
+                      : '';
+                  const reason =
+                    ex.unosat_status !== 'CLASSIFIABLE'
+                      ? isEn
+                        ? `Out of scan · Rain ${rainInt}mm${mlTag}${handTag}`
+                        : `Ngoài UNOSAT · Mưa ${rainInt}mm${mlTag}${handTag}`
+                      : ex.unosat_flood_pct != null
+                      ? isEn
+                        ? `Flood ${ex.unosat_flood_pct.toFixed(1)}% · Rain ${rainInt}mm${mlTag}`
+                        : `Ngập ${ex.unosat_flood_pct.toFixed(1)}% · Mưa ${rainInt}mm${mlTag}`
+                      : `Rain ${rainInt}mm${mlTag}${handTag}`;
                   return (
                     <div
                       key={ex.gid_3}

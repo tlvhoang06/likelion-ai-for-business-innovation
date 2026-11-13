@@ -34,6 +34,10 @@
 | **`scripts/gee_sentinel1_sar_commune_flood_screen.js`** | Code | Google Earth Engine script producing `08_Sentinel1_SAR_Flood_Screen_2895_Communes.csv` (Drive original: `B6_yagi_s1_gadm41.js`). |
 | **`scripts/prepare_unosat_3966_shapefiles.py`** | Code | Python (`GeoPandas` + `Shapely`) script repairing the 35,036-part UNOSAT flood multipolygon while preserving area invariance (`< 10⁻⁶` relative delta; Drive original: `prepare_unosat_shapefiles.py`). |
 | **`scripts/normalize_sentinel1_gee_export.py`** | Code | Python script normalizing raw Google Earth Engine CSV exports (stripping `.geo` and `system:index` columns; Drive original: `B6_normalize_s1_export.py`). |
+| **`06_SUPPLEMENTARY_POST_EVENT/B7_experimental_flood_confirmation.py`** | Code | Reproducible Stage-2 post-event flood confirmation CV script (`HistGradientBoostingClassifier`, 4-fold outer × 3-fold inner `GroupKFold` by province over `Sentinel-1 + R2 + R1 + HAND ≤ 10m`). |
+| **`06_SUPPLEMENTARY_POST_EVENT/B7_experimental_flood_confirmation_cv.csv`** | **2,895** | Committed per-commune held-out CV predictions & fold cutoffs (`568 TP, 327 FP, 150 FN, 1,495 TN` → `63.46% Prec / 79.11% Rec`; `355` outside-UNOSAT communes blank/null), synced into `public/data/communes_yagi_status.json`. |
+| **`06_SUPPLEMENTARY_POST_EVENT/B7_experimental_flood_confirmation_report.md`** | Report | Fold-by-fold provincial CV breakdown and strict retrospective scope boundary (uses post-event Sentinel-1 window `08–21 Sep 2024`; does not replace Stage-1 early alerting). |
+| **`06_SUPPLEMENTARY_POST_EVENT/run_cv_from_submission_data.py`** | Code | Standalone runner re-executing the exact `GroupKFold` CV pipeline directly from public repo CSVs (`08_...`, `09_...`, `10_B7_...`) without external handoff dependencies. |
 
 ---
 

@@ -6,40 +6,33 @@ Tài liệu này khái quát vai trò thực tế của AI trong hệ thống **
 
 ---
 
-## 1. AI làm gì trong hệ thống? (Không cần huấn luyện mô hình riêng)
+## 1. Kiến trúc Hybrid AI 3 lớp (Tầng 1 Tất định -> Tầng 2 ML Hậu kiểm + Gemini Copilot -> Pha 2)
 
-Thay vì huấn luyện mô hình dự báo đen trên dữ liệu chưa đủ dày, ResiLend tận dụng năng lực suy luận ngôn ngữ và gọi công cụ (`Function Calling Agent` qua **Google Gemini**) kết hợp trực tiếp với bộ dữ liệu thiên tai – danh mục hiện có:
+ResiLend kết hợp 3 lớp bổ trợ chặt chẽ mà **không** dùng hộp đen thay thế quy trình tín dụng ngân hàng:
 
-1. **Truy vấn đa điều kiện bằng ngôn ngữ tự nhiên:**
-   - Cán bộ tín dụng có thể đặt câu hỏi hoặc lọc trực tiếp trên `2.895` xã Bắc Bộ và `11` trạm thủy văn mà không cần tự lọc bảng thủ công (ví dụ: tìm xã ngoài vùng quét vệ tinh, xã mưa dưới ngưỡng nhưng ngập cao, vùng gió mạnh, hoặc đối chiếu mực nước vượt Báo động 3).
-   - Các xã thiếu dữ liệu vệ tinh được giữ nguyên trạng thái **"chưa biết / ngoài vùng quét"**, tuyệt đối không tự ép thành `0%` ngập.
-
-2. **Điều phối trực quan lên Bản đồ & Mốc thời gian:**
-   - AI không chỉ trả lời văn bản thụ động mà gọi lệnh đồng bộ trực tiếp vào giao diện làm việc: tự động tô sáng cụm xã khớp kết quả, phóng bản đồ tới khu vực mục tiêu, chuyển mốc ngày diễn biến bão hoặc điều chỉnh các lớp hiển thị (`R1`, `R3`, `UNOSAT`, `Sentinel-1`).
-
-3. **Lập kế hoạch xử lý theo giới hạn nguồn lực:**
-   - Khi chi nhánh nhập ràng buộc thực tế (như số cán bộ hiện có và khung giờ xử lý), AI tính toán công suất tối đa, ưu tiên các xã trọng điểm để bảo toàn nhiều dư nợ Nhóm 1 nhất (giảm trích lập dự phòng `5%`), và gom theo từng cụm huyện để thuận tiện phân tuyến thực địa.
-
-4. **Hỗ trợ soạn nháp hồ sơ hành chính (`Tờ trình`):**
-   - Chuyển đổi các thông số mưa, gió, vệ tinh và quy mô dư nợ ước tính thành bản nháp **Tờ trình đề xuất** (cho từng xã lẻ hoặc gộp theo cụm xã) đúng cấu trúc hành chính ngân hàng để cán bộ rà soát, sao chép và trình duyệt.
+1. **Tầng 1 — Quy tắc pháp lý tất định + Điểm ưu tiên 0–100 (Cảnh báo sớm):**
+   - `R1 | R2 | R3_R50` chia rõ **1.338 xã Rà soát Ưu tiên (`R1|R2`)** và **1.354 xã Watchlist (`chỉ gió R3`)** ngay khi bão đổ bộ (Recall UNOSAT 91,23%, trung vị `-1,50h`), kết hợp thang heuristic minh bạch `0–100` để xếp hạng các xã ngoài vùng phủ vệ tinh.
+2. **Tầng 2A — Học máy hậu kiểm sau bão (`HistGradientBoostingClassifier`, CV 4-fold theo tỉnh):**
+   - Hợp nhất `Sentinel-1 (08–21/09)` + `R2` + `R1` + địa hình trũng `HAND ≤ 10m` trên `2.540` xã chấm được (**63,46% Precision / 79,11% Recall**), giúp bắt đúng **256/321 (79,8%) xã ngập trong Watchlist R3** và khôi phục **52/63 (82,5%) ca bị bộ luật Tầng 1 bỏ sót** (tập trung ở Phú Thọ 59, Thái Nguyên 4).
+   - Toàn bộ **355 xã ngoài vùng UNOSAT** giữ nguyên `null` (*Chưa biết / ngoài vùng quét*), tuyệt đối không nội suy về `0%`.
+3. **Tầng 2B — Trợ lý Điều phối Google Gemini Function Calling (Zero-PII):**
+   - **`query_communes`:** Lọc trực tiếp `2.895` xã theo `workflow_track`, xác suất ML tầng 2 (`s2_ml_prob`), `HAND ≤ 10m`, ngoại lệ đo mưa sót và vùng ngoài quét UNOSAT.
+   - **`plan_branch_triage`:** Tối ưu phân công cán bộ theo giới hạn ngày công/giờ (bao gồm cả các điểm Watchlist & vùng trũng được ML hậu kiểm xác nhận) để giữ nhiều dư nợ Nhóm 1 nhất (tránh dự phòng `5%`).
+   - **`get_river_stations`:** Tra cứu mực nước đỉnh lũ và mốc báo động `BĐ3` theo thời gian thực nghiệm trên 11 trạm thủy văn `R2`.
+   - **`dispatch_ui_action` & Quy trình soạn hồ sơ (`Dossier drafting workflow`):** Điều khiển bản đồ Leaflet (tô sáng, phóng tới cụm xã, chuyển mốc ngày, bật lớp `Sentinel-1`/`UNOSAT`) và soạn nháp **Tờ trình ngoại lệ / Đề xuất biên bản UBND cấp xã** (phương án đề xuất theo xã, tùy chấp thuận của ngân hàng & địa phương) kèm số liệu mưa, gió, `HAND ≤ 10m`, và xác suất hậu kiểm ML Tầng 2.
 
 ---
 
 ## 2. Cơ chế an toàn, kiểm soát và chống "AI-washing"
 
-- **Bảo vệ dữ liệu cá nhân (Zero-PII):** Hệ thống chỉ dùng mã hành chính cấp xã (`GID_3`), tên địa bàn và số liệu tổng hợp khi giao tiếp với API AI. Thông tin định danh hộ vay và hợp đồng tín dụng chi tiết được giữ lại hoàn toàn trong phạm vi ngân hàng.
-- **Khóa phạm vi nghiệp vụ:** Trợ lý AI được cấu hình chỉ phục vụ các câu hỏi và tác vụ điều phối thuộc hệ thống ResiLend và khung pháp lý liên quan, tự động từ chối các yêu cầu ngoài lề.
-- **Vận hành linh hoạt (có hoặc không có API Key):** Người dùng có thể gắn Gemini API Key theo phiên làm việc để bật toàn bộ suy luận đa bước, hoặc vận hành ngay bằng bộ công cụ phân tích cục bộ sẵn có trên trình duyệt.
-- **Tách bạch các khâu KHÔNG dùng AI:**
-  - **Nhận diện thiên tai chuẩn hóa (`R1`, `R2`, `R3`):** Chạy 100% bằng đối chiếu ngưỡng pháp lý và vật lý (như Đ.44 QĐ 18/2021, QĐ 05/2020), không dùng ước lượng xác suất.
-  - **Chấm điểm & thanh lọc hàng đợi (`Ngoại lệ`):** Dùng công thức trọng số minh bạch để mọi thay đổi ngưỡng đều giải trình được từng điểm cộng.
-  - **Xác nhận giãn nợ & báo cáo (`1-Chạm`, `UBND Xã`, `Open API`):** Tuân thủ luồng nghiệp vụ cố định (`TT 29/2025/TT-NHNN`, `NĐ 86/2024`, `TT 64/2024`, `NĐ 346/2026`); mọi quyết định cuối cùng đều do cán bộ tín dụng và các bên liên quan xác nhận.
+- **Tách bạch 2 tầng nghiêm ngặt & giới hạn SLA `<72h`:** Tầng 2 ML (`63,46% / 79,11%`, mã tái lập CV và dự đoán từng xã công khai tại [`submission_data/06_SUPPLEMENTARY_POST_EVENT/`](submission_data/06_SUPPLEMENTARY_POST_EVENT/)) chạy trên ảnh Sentinel-1 hậu bão (`08–20/09`, trước `21/09`) nên **chỉ dùng cho hậu kiểm xác nhận thiệt hại**, không đánh tráo sang độ chính xác cảnh báo sớm Tầng 1 (`27,35% / 91,23%`) và chỉ mới kiểm thử chéo trong 1 mùa bão Yagi. Vì cửa sổ ảnh hậu kiểm kéo dài tới `20/09`, mục tiêu xử lý `<72h` được giữ là **mục tiêu thí điểm (pilot SLA target)** chứ chưa được chứng minh khép kín trong dữ liệu Yagi hồi cứu.
+- **Bảo vệ dữ liệu cá nhân (Zero-PII):** Hệ thống chỉ gửi mã hành chính cấp xã (`GID_3`), tên địa bàn và thông số công khai tới API Gemini; danh tính hộ vay và hợp đồng tín dụng nằm hoàn toàn tại ngân hàng.
+- **Khóa phạm vi nghiệp vụ & quyền quyết định con người:** AI tự động từ chối truy vấn ngoài phạm vi ResiLend, giữ nguyên điểm quy tắc tường minh khi rà ngoại lệ, và **con người (cán bộ tín dụng + ngân hàng + UBND xã theo chấp thuận đối tác) giữ 100% quyền phê duyệt cuối cùng**.
 
 ---
 
-## 3. Định hướng mở rộng sau giai đoạn nguyên mẫu
+## 3. Định hướng Pha 2 (2027–2028)
 
-Khi hệ thống được kết nối với dữ liệu tổn thất thực tế qua nhiều mùa thiên tai từ các ngân hàng và công ty bảo hiểm đối tác, AI có thể mở rộng thêm theo 3 hướng:
-1. **Thẩm định hồ sơ đa phương thức:** Tự động trích xuất thông tin từ đơn giấy viết tay tại quầy hoặc đối chiếu ảnh chụp hiện trường của người dân với dữ liệu mưa – vệ tinh tại đúng địa bàn.
-2. **Hiệu chỉnh ngưỡng bằng Học máy:** Dùng lịch sử nợ xấu thực tế theo vùng để tinh chỉnh ngưỡng kích hoạt phù hợp đặc thù từng tỉnh/lưu vực.
-3. **Nối dữ liệu thủy văn xuống cấp xã:** Kết hợp địa hình số (DEM) với chuỗi mực nước theo giờ từ các trạm đo sông (`R2`) để ước lượng vùng ngập hạ lưu chính xác hơn.
+Khi triển khai thí điểm nhiều mùa bão cùng ngân hàng và bảo hiểm đối tác:
+1. **Hiệu chỉnh ML đa mùa bão & thủy văn theo giờ:** Mở rộng từ CV nội bộ Yagi sang kiểm định chéo nhiều cơn bão bằng dữ liệu vỡ nợ Nhóm 2+ thực tế, kết hợp dự báo lưu lượng `GloFAS` và chuỗi mực nước theo giờ từ các trạm `R2`.
+2. **Thẩm định hồ sơ đa phương thức (Multimodal Intake):** Hỗ trợ OCR đơn giấy tại quầy và đối chiếu ảnh chụp hiện trường của hộ vay với lớp mưa – vệ tinh tại đúng mã xã `GID_3`.

@@ -168,17 +168,17 @@ export function AiCopilotPanel({
   const presets =
     lang === 'en'
       ? [
+          'Filter R3 Watchlist flagged by Stage-2 ML & highlight on map',
+          'Schedule 3 officers in 48h in Phu Tho to recover missed 63 FN floods',
           'Find outside-UNOSAT communes in Bac Giang and highlight on map',
-          'Schedule 3 officers in 48h in Thai Binh to maximize 5% savings',
-          'Which flooded communes did the rain rule miss?',
           selectedCommune
             ? `Draft memo for ${selectedCommune.name}`
             : 'Draft exception approval memo',
         ]
       : [
+          'Lọc xã Watchlist R3 có xác nhận ngập ML tầng 2 & tô sáng bản đồ',
+          '3 cán bộ xử lý trong 48h ở Phú Thọ để cứu các xã ngập bị sót 63 FN',
           'Tìm xã ngoài UNOSAT ở Bắc Giang rồi tô sáng lên bản đồ',
-          '3 cán bộ xử lý trong 48h ở Thái Bình, xếp lịch ưu tiên giữ DP 5%',
-          'Xã nào ngập nặng nhưng đo mưa bị sót?',
           selectedCommune
             ? `Viết nháp tờ trình Xã ${selectedCommune.name}`
             : 'Viết nháp tờ trình duyệt ngoại lệ',

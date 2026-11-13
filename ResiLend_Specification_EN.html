@@ -419,7 +419,7 @@
     <section class="abstract-box">
       <div class="abstract-title">Abstract</div>
       <p style="margin-bottom:0;">
-        Natural disasters represent a recurring systemic credit shock in Vietnam, inflicting 91,622 billion VND in economic losses in 2024 and 104,732 billion VND in 2025; Typhoon Yagi (September 2024) alone affected approximately 190,000 billion VND in outstanding loans. Although Vietnam provides legal mechanisms for agricultural debt restructuring under <strong>Decree 55/2015/NĐ-CP</strong> (amended by <strong>Decree 156/2025/NĐ-CP</strong>) and <strong>Circular 29/2025/TT-NHNN</strong>, implementation remains manual, household-by-household, and constrained by a strict window requiring borrower requests while current or at most <strong>10 days overdue</strong>. For non-agricultural loans, <strong>Circular 53/2024/TT-NHNN</strong> required <strong>88 days</strong> after Typhoon Yagi to establish debt-group retention guidelines. We present <strong>ResiLend</strong>, a shared B2B FinTech and AI operational platform that converts open meteorological, hydrological, and satellite observations into a standardized commune-level trigger signal (<code>GID_3</code>) distributed via Open API (<strong>Circular 64/2024/TT-NHNN</strong>). ResiLend combines an auditable deterministic rule engine (<code>R1</code> extreme rain, <code>R2</code> resolved 2,895-commune river stage crosswalk, <code>R3</code> typhoon wind) with a zero-training <strong>Google Gemini Function-Calling Operations Copilot</strong> that performs natural-language spatial filtering, staffing-constrained branch triage scheduling, and batch commune loss attestation drafting for local authorities (UBND). Evaluated retrospectively across <strong>2,895 communes in 12 Northern provinces</strong> against <strong>UNOSAT 3966</strong> and <strong>Sentinel-1 SAR</strong> flood observations, ResiLend cleanly separates <strong>Stage-1 Early Alerting</strong> (<strong>91.23% UNOSAT recall / 27.35% precision</strong> at <strong>−1.50h</strong> median lead; routing <strong>1,338 <code>R1|R2</code> Priority Review</strong> and <strong>1,354 <code>R3</code>-only Watchlist</strong> communes) from <strong>Stage-2 Post-Event Flood Confirmation</strong> (<code>Sentinel-1 + R2 + R1 + HAND</code> 4-fold cross-validation: <strong>63.46% precision / 79.11% recall</strong>) and batch UBND verification gating <strong>1-Tap deferral dispatch</strong>—enabling banks to break even when avoiding Group 2 downgrade (5% provision under <strong>Decree 86/2024/NĐ-CP</strong>) on just <strong>1 in 725 monitored loans</strong>.
+        Natural disasters represent a recurring systemic credit shock in Vietnam, inflicting 91,622 billion VND in economic losses in 2024 and 104,732 billion VND in 2025; Typhoon Yagi (September 2024) alone affected approximately 190,000 billion VND in outstanding loans. Although Vietnam provides legal mechanisms for agricultural debt restructuring under <strong>Decree 55/2015/NĐ-CP</strong> (amended by <strong>Decree 156/2025/NĐ-CP</strong>) and <strong>Circular 29/2025/TT-NHNN</strong> (commercial banks and People's Credit Funds; excluding policy banks such as VBSP per Article 2), implementation remains manual, household-by-household, and constrained by a strict window requiring restructuring completion while the loan is current or <strong>under 10 days overdue</strong> (before Group 2 classification). For non-agricultural loans, <strong>Circular 53/2024/TT-NHNN</strong> required <strong>88 days</strong> after Typhoon Yagi to establish debt-group retention guidelines. We present <strong>ResiLend</strong>, a shared B2B FinTech and AI operational platform that converts open meteorological, hydrological, and satellite observations into a standardized commune-level trigger signal (<code>GID_3</code>) distributed via Open API (<strong>Circular 64/2024/TT-NHNN</strong>). ResiLend combines an auditable deterministic rule engine (<code>R1</code> extreme rain, <code>R2</code> resolved 2,895-commune river stage crosswalk, <code>R3</code> typhoon wind) with a zero-training <strong>Google Gemini Function-Calling Operations Copilot</strong> that performs natural-language spatial filtering, staffing-constrained branch triage scheduling, and a structured dossier drafting workflow for local authorities (UBND). Evaluated retrospectively across <strong>2,895 communes in 12 Northern provinces</strong> against <strong>UNOSAT 3966</strong> and <strong>Sentinel-1 SAR</strong> flood observations, ResiLend cleanly separates <strong>Stage-1 Early Alerting</strong> (<strong>91.23% UNOSAT recall / 27.35% precision</strong> at <strong>−1.50h</strong> median lead; routing <strong>1,338 <code>R1|R2</code> Priority Review</strong> and <strong>1,354 <code>R3</code>-only Watchlist</strong> communes) from <strong>Stage-2 Post-Event Flood Confirmation</strong> (<code>Sentinel-1 + R2 + R1 + HAND</code> 4-fold cross-validation: <strong>63.46% precision / 79.11% recall</strong>, CV scripts and fold predictions published in <code>submission_data/06_SUPPLEMENTARY_POST_EVENT/</code>) and a proposed batch UBND verification gating <strong>1-Tap deferral dispatch</strong> (subject to partner bank and local authority acceptance)—enabling banks to break even when avoiding Group 2 downgrade (5% potential specific risk provision under <strong>Decree 86/2024/NĐ-CP</strong>) on just <strong>1 in 725 monitored loans</strong>.
       </p>
       <div class="keywords">
         <strong>Keywords:</strong> Agricultural Credit Relief, Parametric Disaster Triggers, Function-Calling LLM Agent, Remote Sensing (UNOSAT / Sentinel-1), Debt Group 1 Retention, Open Banking API, Vietnam.
@@ -434,14 +434,14 @@
       When severe typhoons and floods hit rural Vietnam, farming households simultaneously lose harvest income and face fixed loan repayment deadlines. According to the General Statistics Office (GSO), natural disasters caused 91,622 billion VND in economic losses in 2024 and 104,732 billion VND in 2025. Typhoon Yagi (landfall 07 September 2024) illustrates the discovery lag across the banking system: two weeks after landfall (~21–22 September 2024), credit institutions had identified roughly <strong>83,000 affected customers</strong> holding <strong>116,000 billion VND</strong> in affected debt; three months later (December 2024), the sector-wide tally rose by roughly two-thirds to <strong>94,000 customers</strong> and <strong>190,000 billion VND</strong>. At Agribank alone, mid-September 2024 estimates grew from <strong>12,000 borrowers</strong> (<strong>21,000 billion VND</strong>) to <strong>over 28,000 borrowers</strong> (<strong>~40,000 billion VND</strong>) as isolated communes re-established contact. Agricultural and rural trade households bear the brunt of this shock—accounting for <strong>97.2%</strong> of affected borrowers in provinces such as Lào Cai.
     </p>
     <p>
-      When repayment extensions are not completed before delinquency thresholds expire, automatic credit downgrades penalize both parties: under <strong>Circular 31/2024/TT-NHNN</strong>, loans overdue from 10 to 90 days migrate to <strong>Group 2</strong> (special mention), impairing borrower credit histories while requiring commercial banks to book specific provisions of <strong>5% for Group 2</strong> and <strong>20% for Group 3</strong> under <strong>Decree 86/2024/NĐ-CP</strong>.
+      When repayment extensions are not completed while loans remain under 10 days overdue (Group 1 · Performing Loans), automatic credit downgrades penalize both parties: under <strong>Circular 31/2024/TT-NHNN</strong>, loans overdue from 10 to 90 days migrate to <strong>Group 2</strong> (special mention / attention-needed—prior to Group 3–5 non-performing bad debt), impairing borrower credit records while requiring commercial banks to book <strong>potential specific risk provisions</strong> of <strong>5% for Group 2</strong> and <strong>20% for Group 3</strong> under <strong>Decree 86/2024/NĐ-CP</strong> (not a realized loss or penalty).
     </p>
 
     <h3>1.2 Structural Causes of Operational Delay</h3>
     <ol>
       <li>
-        <strong>Paper-Bound, Household-by-Household Processing Within a 10-Day Window:</strong>
-        Under <strong>Decree 55/2015/NĐ-CP</strong> (amended through <strong>Decree 156/2025/NĐ-CP</strong>) and <strong>Circular 29/2025/TT-NHNN</strong> (Article 3 Clause 1 and Article 8 Clause 2, effective 15 November 2025, replacing Circulars 10/2015 and 25/2018), credit institutions may restructure agricultural repayment schedules (up to 12 months for short-term loans and 36 months for medium- and long-term loans) and retain the borrower's pre-restructuring debt group only when the repayment obligation is current or <strong>at most 10 days overdue</strong>, supported by a borrower request and bank assessment. Debt freezing further requires individual damage minutes certified by commune authorities (UBND). Inundated roads and disrupted communications make collecting paper dossiers across tens of thousands of households unfeasible within 10 days.
+        <strong>Paper-Bound, Household-by-Household Processing Before Reaching 10 Days Overdue:</strong>
+        Under <strong>Decree 55/2015/NĐ-CP</strong> (amended through <strong>Decree 156/2025/NĐ-CP</strong>) and <strong>Circular 29/2025/TT-NHNN</strong> (Article 2, Article 3 Clause 1, and Article 8 Clause 2, effective 15 November 2025, replacing Circulars 10/2015 and 25/2018 for commercial banks and People's Credit Funds, excluding VBSP), credit institutions may restructure agricultural repayment schedules (up to 12 months for short-term loans and 36 months for medium- and long-term loans) and retain the borrower's pre-restructuring debt group when restructuring is processed while the obligation is current or <strong>under 10 days overdue</strong> (before Group 2 migration under Circular 31/2024), supported by a borrower request and bank assessment. Debt freezing further relies on disaster damage confirmation certified by commune authorities (UBND). Inundated roads and disrupted communications make collecting individual paper dossiers across tens of thousands of households unfeasible within this window.
       </li>
       <li>
         <strong>Ad-Hoc Regulatory Cycles Outside Agriculture:</strong>
@@ -449,7 +449,7 @@
       </li>
       <li>
         <strong>Post-Storm Information Asymmetry:</strong>
-        Even when banks proactively waive branch visits, credit officers lack real-time, commune-level visibility into which loan portfolios are physically flooded, forcing manual household-by-household tallying across weeks while the 10-day delinquency clock continues to run.
+        Even when banks proactively waive branch visits, credit officers lack real-time, commune-level visibility into which loan portfolios are physically flooded, forcing manual household-by-household tallying across weeks while the 10-day Group 1 clock continues to run.
       </li>
       <li>
         <strong>Limited Risk Transfer to Agricultural Insurance:</strong>
@@ -470,12 +470,12 @@
         Processes hourly rainfall (<code>GSMaP v8</code>), tropical cyclone wind fields (<code>IBTrACS</code>), resolved national river gauge basin crosswalks (<code>R2</code>), and post-event satellite flood masks (<code>Sentinel-1 SAR</code> + <code>HAND</code>) to emit standardized Stage-1 Early Alert and Stage-2 Confirmation JSON signals per <code>GID_3</code> commune.
       </li>
       <li>
-        <strong>Module 2 — Commune-Level Remote-Sensing Loss Dossier for Batch UBND Attestation:</strong>
-        Generates an area-level flood extent, rainfall, and wind evidence report for the Commune People's Committee (UBND) to sign <strong>once for the entire commune</strong>, replacing repetitive household-by-household confirmations across all participating banks.
+        <strong>Module 2 — Commune-Level Remote-Sensing Loss Dossier for Proposed Batch UBND Attestation:</strong>
+        Generates an area-level flood extent, rainfall, and wind evidence report designed as a <strong>proposed batch attestation</strong> for the Commune People's Committee (UBND) to review and endorse at commune scale—aimed at streamlining repetitive household-by-household confirmations, <em>subject to partner bank and local authority acceptance</em>.
       </li>
       <li>
-        <strong>Module 3 — Two-Stage Routing (Early Alert Tracks &rarr; Confirmed 1-Tap &amp; Exception Queue):</strong>
-        In <strong>Stage 1</strong>, participating banks match triggered <code>GID_3</code> codes internally and split <code>R1|R2</code> communes (<code>1,338</code>) into <strong>Priority Review</strong> and <code>R3</code>-only communes (<code>1,354</code>) into <strong>Watchlist</strong> for early readiness. In <strong>Stage 2</strong>, post-event <code>Sentinel-1 + R2 + R1 + HAND</code> flood confirmation and batch UBND loss attestation gate pre-filled <strong>1-Tap deferral requests</strong> via bank app or SMS within the 10-day window of <strong>Circular 29/2025/TT-NHNN</strong>, while missed-gauge pockets and outside-scan communes enter the Gemini <strong>Exception Queue</strong> and counter paper fallback channel.
+        <strong>Module 3 — Two-Stage Routing (Early Alert Tracks &rarr; ML-Confirmed 1-Tap &amp; Exception Queue):</strong>
+        In <strong>Stage 1</strong>, participating banks match triggered <code>GID_3</code> codes internally and split <code>R1|R2</code> communes (<code>1,338</code>) into <strong>Priority Review</strong> and <code>R3</code>-only communes (<code>1,354</code>) into <strong>Watchlist</strong> for early readiness. In <strong>Stage 2</strong>, post-event <code>HistGradientBoostingClassifier</code> confirmation (fusing <code>Sentinel-1 + R2 + R1 + HAND &le; 10m</code> across <code>2,540</code> classifiable communes while keeping <code>355</code> outside-scan communes strictly <code>null</code>) and the proposed batch UBND loss attestation gate pre-filled <strong>1-Tap deferral requests</strong> before loans reach 10 days overdue under <strong>Circular 29/2025/TT-NHNN</strong>, while recovered Watchlist/missed pockets and out-of-scan communes enter the Gemini <strong>Exception Queue</strong> and counter paper channel.
       </li>
       <li>
         <strong>Module 4 — Multi-Party Open API for Parametric Insurance &amp; SBV Supervision:</strong>
@@ -504,15 +504,15 @@
 
         <!-- Box 2: ResiLend Core -->
         <rect x="215" y="16" width="205" height="142" rx="4" fill="#f3f4f6" stroke="#1f2937" stroke-width="1.5"/>
-        <text x="317" y="34" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="10.5" font-weight="700" fill="#0f4c5c">2. RESILEND CORE &amp; AI AGENT</text>
+        <text x="317" y="34" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="10.5" font-weight="700" fill="#0f4c5c">2. RESILEND CORE &amp; HYBRID AI</text>
         <line x1="225" y1="41" x2="410" y2="41" stroke="#d1d5db" stroke-width="1"/>
-        <text x="225" y="58" font-family="IBM Plex Sans, sans-serif" font-size="9.3" font-weight="600" fill="#111827">Deterministic Rule Engine:</text>
-        <text x="225" y="72" font-family="IBM Plex Mono, monospace" font-size="8.8" fill="#374151">Standardized GID_3 Event Signal</text>
-        <text x="225" y="92" font-family="IBM Plex Sans, sans-serif" font-size="9.3" font-weight="600" fill="#111827">Gemini Function-Calling Agent:</text>
-        <text x="225" y="106" font-family="IBM Plex Mono, monospace" font-size="8.8" fill="#374151">• Blind-spot &amp; exception filter</text>
-        <text x="225" y="120" font-family="IBM Plex Mono, monospace" font-size="8.8" fill="#374151">• Officer cluster dispatch plan</text>
-        <text x="225" y="134" font-family="IBM Plex Mono, monospace" font-size="8.8" fill="#374151">• UBND &amp; SBV dossier drafting</text>
-        <text x="225" y="150" font-family="IBM Plex Sans, sans-serif" font-size="8.5" font-weight="600" fill="#0f4c5c">Zero-PII (Area GID_3 Only)</text>
+        <text x="225" y="56" font-family="IBM Plex Sans, sans-serif" font-size="9.1" font-weight="600" fill="#111827">Stage-1 Rules + Stage-2 ML:</text>
+        <text x="225" y="69" font-family="IBM Plex Mono, monospace" font-size="8.4" fill="#374151">R1|R2|R3 + HistGB (S1+HAND CV)</text>
+        <text x="225" y="88" font-family="IBM Plex Sans, sans-serif" font-size="9.1" font-weight="600" fill="#111827">Gemini Function-Calling Agent:</text>
+        <text x="225" y="102" font-family="IBM Plex Mono, monospace" font-size="8.5" fill="#374151">• Watchlist, FN &amp; blind-spot filter</text>
+        <text x="225" y="116" font-family="IBM Plex Mono, monospace" font-size="8.5" fill="#374151">• Officer cluster dispatch plan</text>
+        <text x="225" y="130" font-family="IBM Plex Mono, monospace" font-size="8.5" fill="#374151">• UBND &amp; SBV dossier drafting</text>
+        <text x="225" y="149" font-family="IBM Plex Sans, sans-serif" font-size="8.4" font-weight="600" fill="#0f4c5c">Zero-PII (Area GID_3 · Nulls Kept)</text>
 
         <line x1="420" y1="55" x2="452" y2="55" stroke="#1f2937" stroke-width="1.4" marker-end="url(#arrow)"/>
         <line x1="420" y1="120" x2="452" y2="120" stroke="#1f2937" stroke-width="1.4" marker-end="url(#arrow)"/>
@@ -520,16 +520,16 @@
         <!-- Box 3A: Track A -->
         <rect x="454" y="16" width="175" height="66" rx="4" fill="#ffffff" stroke="#1f2937" stroke-width="1.3"/>
         <text x="541" y="32" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="9.2" font-weight="700" fill="#111827">3A. PRIORITY &amp; CONFIRMED 1-TAP</text>
-        <text x="463" y="47" font-family="IBM Plex Sans, sans-serif" font-size="8.6" fill="#374151">R1|R2 Priority → S1/UBND Confirm →</text>
-        <text x="463" y="60" font-family="IBM Plex Sans, sans-serif" font-size="8.6" fill="#374151">Unlock 1-Tap SMS/App request</text>
+        <text x="463" y="47" font-family="IBM Plex Sans, sans-serif" font-size="8.5" fill="#374151">R1|R2 → S2 ML &amp; UBND Confirm →</text>
+        <text x="463" y="60" font-family="IBM Plex Sans, sans-serif" font-size="8.5" fill="#374151">Unlock 1-Tap SMS/App request</text>
         <text x="463" y="73" font-family="IBM Plex Mono, monospace" font-size="8.3" fill="#0f4c5c">≤10d Window (Cir. 29/2025)</text>
 
         <!-- Box 3B: Track B -->
         <rect x="454" y="92" width="175" height="66" rx="4" fill="#ffffff" stroke="#1f2937" stroke-width="1.3"/>
         <text x="541" y="108" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="9.2" font-weight="700" fill="#111827">3B. WATCHLIST &amp; EXCEPTIONS</text>
-        <text x="463" y="123" font-family="IBM Plex Sans, sans-serif" font-size="8.6" fill="#374151">R3-Only / Missed R1|R2 queued →</text>
-        <text x="463" y="136" font-family="IBM Plex Sans, sans-serif" font-size="8.6" fill="#374151">Gemini Triage + 1 Batch UBND</text>
-        <text x="463" y="149" font-family="IBM Plex Mono, monospace" font-size="8.3" fill="#0f4c5c">S1 Blind-Spot Audit Trail</text>
+        <text x="463" y="123" font-family="IBM Plex Sans, sans-serif" font-size="8.5" fill="#374151">Watchlist R3 &amp; 63 FN → S2 ML +</text>
+        <text x="463" y="136" font-family="IBM Plex Sans, sans-serif" font-size="8.5" fill="#374151">Gemini Triage + 1 Batch UBND</text>
+        <text x="463" y="149" font-family="IBM Plex Mono, monospace" font-size="8.3" fill="#0f4c5c">355 Out-of-Scan Kept Unknown</text>
 
         <line x1="629" y1="49" x2="657" y2="68" stroke="#1f2937" stroke-width="1.4" marker-end="url(#arrow)"/>
         <line x1="629" y1="125" x2="657" y2="105" stroke="#1f2937" stroke-width="1.4" marker-end="url(#arrow)"/>
@@ -553,26 +553,32 @@
 
     <h3>2.2 Three-Layer Hybrid AI &amp; Geospatial Architecture</h3>
     <p>
-      In regulated banking, uncalibrated black-box models cannot be permitted to autonomously approve or deny loan restructuring before multi-year partner loss records exist. ResiLend therefore separates hazard detection, AI operational triage, and future threshold calibration into three distinct layers:
+      In regulated banking, uncalibrated black-box models cannot autonomously approve or deny loan restructuring, nor can post-event satellite models replace Stage-1 early alerting before multi-year partner loss records exist. ResiLend therefore cleanly separates deterministic Day-1 triggers, live Stage-2 ML confirmation plus Zero-PII Gemini triage, and Phase-2 cross-storm calibration across three layers:
     </p>
     <ol>
       <li>
-        <strong>Layer 1 — Deterministic Trigger &amp; Heuristic Exception Ranking (Live in Backtest):</strong>
-        Statutory weather thresholds (<code>R1</code>, <code>R2</code>, <code>R3</code>) determine primary commune alerts. For communes where local rain gauges miss downstream flooding (<code>Rain &lt; 200mm</code> while satellite flood ratios are elevated or optical coverage is unavailable), an auditable rule-weighted heuristic ranks the Exception Queue on a <strong>0–100 triage priority score</strong> weighted by four additive components: satellite flood coverage ratio (up to <code>38 pts</code>), near-threshold 24h rainfall proximity (up to <code>28 pts</code>), <code>R50/R64</code> typhoon wind exposure (up to <code>18 pts</code>), and provincial basin flood density and loan exposure concentration (up to <code>16 pts</code>). This score orders manual review queues and is not treated as a calibrated machine-learning flood probability.
+        <strong>Layer 1 — Deterministic Statutory Trigger &amp; Heuristic Exception Ranking (Stage 1 Early Alerting):</strong>
+        Objective legal thresholds (<code>R1</code> rainfall &gt;200 mm, <code>R2</code> river stage &gt;BĐ3 across 6 basins, and <code>R3</code> R50/R64 storm wind) route <code>1,338</code> communes into <strong>Priority Review (<code>R1|R2</code>)</strong> and <code>1,354</code> communes into <strong>Watchlist (<code>R3<sub>50</sub></code>-only)</strong> at an invariant <code>-1.50h</code> median lead (<code>27.35% Prec / 91.23% Rec</code>). Alongside binary rules, an auditable <strong>0–100 heuristic score</strong> ranks outside-scan pockets and exception queues using four additive weights: satellite flood ratio (<code>≤38 pts</code>), near-threshold rain (<code>≤28 pts</code>), wind swath (<code>≤18 pts</code>), and basin flood density + exposure (<code>≤16 pts</code>).
       </li>
       <li>
-        <strong>Layer 2 — Zero-Training AI Operations Copilot via Google Gemini Function Calling (Live in Web MVP):</strong>
-        ResiLend integrates a <strong>Google Gemini Function-Calling Agent</strong> (<code>gemini-2.5-flash</code>) bound to four deterministic workspace tools over the 2,895-commune dataset. Function-calling requests to the Google Gemini API transmit only administrative commune codes (<code>GID_3</code>) and public meteorological or remote-sensing indicators, never transmitting personal identifiable information (PII), customer identities, or individual borrower loan balances to the cloud language model:
+        <strong>Layer 2 — Live Dual AI Engine: Stage-2 Post-Event ML Confirmation + Zero-PII Gemini Copilot (MVP + Backtest):</strong>
+        ResiLend pairs two complementary, strictly bounded AI components without ever automating final credit decisions:
         <ul>
-          <li><code>query_communes</code>: Converts natural-language officer queries into multi-criteria filters across all 2,895 communes (e.g., isolating communes outside the UNOSAT scan in Bắc Giang or flooded communes missed by <code>R1</code> rain gauges), keeping missing satellite coverage as <em>Unknown</em> rather than <code>0%</code>.</li>
-          <li><code>plan_branch_triage</code>: Computes staffing-constrained field dispatch schedules by clustering priority communes by district (<code>Huyện</code>) under explicit officer headcount and time-window limits (e.g., <em>"3 credit officers within 48 hours in Thái Bình"</em>) to maximize retained Group 1 loans and avoided 5% provisioning.</li>
-          <li><code>get_river_stations</code>: Queries peak stage, Alert Level 3 (<code>BĐ3</code>) exceedances, and post-landfall lag hours across all 11 Northern hydrological gauges.</li>
-          <li><code>dispatch_ui_action</code>: Controls the interactive Leaflet map—highlighting filtered commune polygons, zooming to target bounds (<code>flyToBounds</code>), switching timeline dates, and drafting structured Vietnamese/English submission memos (<em>Tờ trình</em>) for branch directors and UBND sign-off.</li>
+          <li>
+            <strong>Stage-2 Supervised Flood Confirmation (<code>HistGradientBoostingClassifier</code>, 4-fold <code>GroupKFold</code> CV):</strong> Fuses post-event <code>Sentinel-1</code> water fraction &amp; coverage (<code>08–20 Sep</code>, pre-21 Sep composite window), river trigger <code>R2</code>, extreme rain <code>R1</code>, and terrain elevation (<code>HAND ≤ 10m</code>) across the <code>2,540</code> classifiable communes—achieving <strong><code>63.46%</code> precision and <code>79.11%</code> recall</strong> (<code>568 TP, 327 FP, 150 FN, 1,495 TN</code>; <code>61.93% Prec / 81.34% Rec</code> at fixed-88% sensitivity; full CV code, provincial fold splits, and commune-level predictions published in <code>submission_data/06_SUPPLEMENTARY_POST_EVENT/</code>) to triage Watchlist and missed-gauge pockets before 1-Tap offers. In operational backtesting, it recovers <strong><code>256 / 321 (79.8%)</code> flooded <code>R3</code>-only Watchlist communes</strong> (413 flagged) and <strong><code>52 / 63 (82.5%)</code> unflagged Stage-1 false negatives</strong> across Phú Thọ (59 FN) and Thái Nguyên (4 FN). Crucially, all <code>355</code> outside-UNOSAT communes remain strictly <code>null</code> (<em>Unknown</em>, never imputed to zero). Because post-event Sentinel-1 imagery spans <code>08–20 Sep 2024</code>, the end-to-end <code>&lt;72h</code> post-imagery turnaround remains a <strong>Phase 1 live pilot target</strong> rather than a proven retrospective runtime.
+          </li>
+          <li>
+            <strong>Zero-PII Google Gemini Function-Calling Copilot (<code>gemini-2.5-flash</code>):</strong> Binds 4 declared workspace tools in the public codebase over public <code>GID_3</code>, hazard, <code>HAND ≤ 10m</code>, and <code>s2_ml_prob</code> records only—never transmitting borrower PII or balances to the cloud:
+            <code>query_communes</code> (supports <code>workflow_track</code>, <code>require_s2_ml_confirm</code>, <code>min_ml_prob</code>, <code>min_hand_pct</code>, <code>sort_by: 's2_ml_prob'</code>, plus outside-scan isolation);
+            <code>plan_branch_triage</code> (routes credit officers under staffing/hour caps across ML-confirmed Watchlist, rural FN pockets, and Priority communes);
+            <code>get_river_stations</code> (queries peak water levels and BĐ3 timestamps across all 11 gauges); and
+            <code>dispatch_ui_action</code> (highlights polygons and toggles S1/UNOSAT layers), paired with a client-side <strong>Dossier drafting workflow</strong> compiling cited commune evidence briefs (<code>s2_ml_prob</code> and <code>HAND ≤ 10m</code>) for proposed batch UBND attestation.
+          </li>
         </ul>
       </li>
       <li>
-        <strong>Layer 3 — Phase 2 Machine Learning Threshold Calibration (Pilot Roadmap):</strong>
-        As partner banks accumulate anonymized commune-level loan delinquency and loss records across storm seasons, supervised threshold calibration will refine local trigger cutoffs per micro-basin.
+        <strong>Layer 3 — Phase 2 Multi-Storm Calibration &amp; Multimodal Intake (2027–2028 Roadmap):</strong>
+        Because Stage-2 CV was evaluated on held-out provinces within one Typhoon Yagi event using post-event SAR, cross-event calibration awaits multi-storm pilot records combining <strong>GloFAS</strong> hourly river discharge forecasts, hourly station hydrographs, anonymized multi-year bank Group 2+ delinquency labels, and multimodal intake (paper dossier OCR / field flood photo triage).
       </li>
     </ol>
 
@@ -591,10 +597,10 @@
         </thead>
         <tbody>
           <tr>
-            <td><strong>Geospatial Pipeline</strong></td>
-            <td>Python, Google Earth Engine (GEE), <code>pandas</code>, <code>GeoPandas</code></td>
-            <td>Processes hourly <code>GSMaP v8</code> rainfall, <code>IBTrACS</code> wind tracks, resolved <code>NCHMF R2</code> river-basin crosswalks, and <code>Sentinel-1 SAR</code> backscatter across 2,895 GADM v4.1 polygons.</td>
-            <td>Completed retrospective scripts and verified master JSON/CSV datasets for Typhoon Yagi.</td>
+            <td><strong>Geospatial &amp; Stage-2 ML Pipeline</strong></td>
+            <td>Python, Google Earth Engine, <code>pandas</code>, <code>scikit-learn</code> (<code>HistGradientBoostingClassifier</code>)</td>
+            <td>Processes hourly <code>GSMaP v8</code> rain, <code>IBTrACS</code> winds, 6-basin <code>NCHMF R2</code> crosswalks, <code>HAND ≤10m</code> DEM, <code>Sentinel-1</code> backscatter, and 4-fold provincial CV confirmation across 2,895 communes.</td>
+            <td>Completed retrospective scripts, per-commune CV table (<code>submission_data/06_SUPPLEMENTARY_POST_EVENT/</code>), and merged <code>communes_yagi_status.json</code> (CV <code>63.46% / 79.11%</code>; 355 nulls preserved).</td>
           </tr>
           <tr>
             <td><strong>Spatial Storage &amp; API</strong></td>
@@ -605,8 +611,8 @@
           <tr>
             <td><strong>Operations Console &amp; AI Copilot</strong></td>
             <td>React 18, TypeScript, Vite, Leaflet + <strong>Google Gemini Function Calling</strong></td>
-            <td>Browser workspace rendering 2,895 commune polygons, exception sliders, 1-Tap simulation, and tool-grounded LLM dispatch.</td>
-            <td><strong>Live at</strong> <code>resilend-demo.vercel.app</code> with built-in <strong>Local Tool Fallback</strong> (works immediately without an API key) + optional BYOK.</td>
+            <td>Browser workspace rendering 2,895 commune polygons, Watchlist/Unflagged Stage-2 ML filters, exception sliders, 1-Tap simulation, and tool-grounded LLM dispatch.</td>
+            <td><strong>Live at</strong> <code>resilend-demo.vercel.app</code> exposing <code>s2_ml_prob</code>, <code>HAND</code>, and <strong>Local Tool Fallback</strong> + optional BYOK.</td>
           </tr>
           <tr>
             <td><strong>Security &amp; Auditability</strong></td>
@@ -684,37 +690,37 @@
           </tr>
           <tr>
             <td><strong>Stage-2 Flood Confirmation (Experimental CV)</strong></td>
-            <td>4-fold spatial CV fusing post-event <code>Sentinel-1</code> (08–21 Sep) + <code>R2</code> + <code>R1</code> + <code>HAND</code> before 1-Tap dispatch</td>
+            <td>4-fold provincial CV (<code>HistGradientBoostingClassifier</code>) fusing post-event <code>Sentinel-1</code> (08–20 Sep, pre-21 Sep) + <code>R2</code> + <code>R1</code> + <code>HAND ≤10m</code> before 1-Tap dispatch (reproducible in <code>submission_data/06_SUPPLEMENTARY_POST_EVENT/</code>)</td>
             <td class="num">63.46% Prec / 79.11% Rec<br/>568 TP · 327 FP<br/>150 FN · 1,495 TN</td>
-            <td>Strictly separated post-event confirmation metric (<code>61.93% Prec / 81.34% Rec</code> at 88% target). Doubles early-alert precision before commune UBND batch sign-off unlocks 1-Tap deferral dispatch.</td>
+            <td>Strictly separated post-event confirmation metric (<code>61.93% Prec / 81.34% Rec</code> at 88% target; <code>355</code> out-of-scan communes remain <code>null</code>). Doubles early-alert precision and catches <code>256/321</code> Watchlist &amp; <code>52/63</code> unflagged Stage-1 FN floods before proposed batch UBND attestation unlocks 1-Tap dispatch. Because SAR spans 08–20 Sep, <code>&lt;72h</code> post-imagery turnaround remains a <strong>Phase 1 pilot target</strong>.</td>
           </tr>
         </tbody>
       </table>
       <div class="table-note">
-        Note: Trigger counts measure communes crossing statutory hazard thresholds; household-level loss accuracy and turnaround times require live bank pilot measurement.
+        Note: Trigger counts measure communes crossing statutory hazard thresholds; Stage-2 CV evaluates intra-Yagi held-out provinces and does not substitute for multi-storm cross-event validation.
       </div>
     </div>
 
     <h3>3.2 Representative Commune Cases in the Backtest Dataset</h3>
     <p>
-      Comparing meteorological triggers against satellite flood observations illustrates three operational cases available for interactive inspection in the Web MVP:
+      Comparing meteorological triggers against satellite flood observations illustrates four operational cases available for interactive inspection in the Web MVP:
     </p>
     <ul>
       <li>
         <strong>Priority Track &amp; Post-Confirm 1-Tap Dispatch (<code>Vũ Xá</code>):</strong>
-        <em>Vũ Xá Commune (Lục Nam, Bắc Giang — <code>VNM.3.4.26_1</code>)</em> recorded both extreme rainfall (<code>210.45 mm</code>, <code>R1 = 1</code>) and typhoon wind force (<code>R3 = 1</code>), corroborated post-event by <strong>84.89% UNOSAT flood extent</strong>. In Stage 1 it enters the <code>R1|R2</code> Priority Review queue immediately, and once Stage-2 Sentinel-1 and batch UBND attestation confirm flood impact, opted-in borrowers unlock pre-filled 1-Tap deferral offers.
+        <em>Vũ Xá Commune (Lục Nam, Bắc Giang — <code>VNM.3.4.26_1</code>)</em> recorded both extreme rainfall (<code>210.45 mm</code>, <code>R1 = 1</code>) and typhoon wind force (<code>R3 = 1</code>), corroborated post-event by <strong>84.89% UNOSAT flood extent</strong> (<code>85.2% HAND ≤10m</code>) and <strong>90.8% Stage-2 ML confirmation</strong>. In Stage 1 it enters the <code>R1|R2</code> Priority Review queue immediately, and once Stage-2 ML and proposed batch UBND attestation confirm flood impact, opted-in borrowers unlock pre-filled 1-Tap deferral offers.
       </li>
       <li>
         <strong>Resolved River Crosswalk Rescue (<code>Điêu Lương</code>):</strong>
-        <em>Điêu Lương Commune (Cẩm Khê, Phú Thọ — <code>VNM.44.1.6_1</code>)</em> saw only <code>132.28 mm</code> local rain (<code>R1 = 0</code>) and missed the storm wind swath (<code>R3_R50 = 0</code>), but crossed <code>R2 = 1</code> via the <strong>Yên Bái</strong> basin crosswalk (<code>52.2 km</code> proximity, <code>76.01% HAND ≤ 10m</code>) and recorded <strong>22.19% UNOSAT inundation</strong>—showing how resolved <code>R2</code> mapping expands Priority Review recall beyond local rain gauges.
+        <em>Điêu Lương Commune (Cẩm Khê, Phú Thọ — <code>VNM.44.1.6_1</code>)</em> saw only <code>132.28 mm</code> local rain (<code>R1 = 0</code>) and missed the storm wind swath (<code>R3_R50 = 0</code>), but crossed <code>R2 = 1</code> via the <strong>Yên Bái</strong> basin crosswalk (<code>52.2 km</code> proximity, <code>76.01% HAND ≤ 10m</code>) and recorded <strong>22.19% UNOSAT inundation</strong> (<strong>78.9% Stage-2 ML</strong>)—showing how resolved <code>R2</code> mapping expands Priority Review recall beyond local rain gauges.
       </li>
       <li>
-        <strong>Outside 6-River Footprint Pocket (Watchlist &amp; Exception Queue):</strong>
-        <em>Gia Thủy Commune (Nho Quan, Ninh Bình — <code>VNM.42.4.6_1</code>)</em> experienced <strong>76.12% UNOSAT inundation</strong> (and <code>20.5%</code> Sentinel-1 flood proxy) despite <code>166.19 mm</code> local rainfall (<code>R1 = 0</code>) and lying outside the 6 selected <code>R2</code> river basins (<code>R2 = 0</code>); it entered the <code>R3_R50</code> Watchlist alongside <em>Nam Phương Tiến (Chương Mỹ, Hà Nội — <code>VNM.27.6.15_1</code>)</em> at <strong>43.89% inundation</strong> (<code>130.78 mm</code>, <code>R1 = 0, R2 = 0</code>). ResiLend routes these communes via Stage-2 S1 confirmation and the Gemini Exception Queue for batch UBND attestation and officer review.
+        <strong>Watchlist &amp; Exception Queue Triage (<code>Gia Thủy</code> &amp; <code>Lệnh Khanh</code>):</strong>
+        <em>Gia Thủy Commune (Nho Quan, Ninh Bình — <code>VNM.42.4.6_1</code>)</em> experienced <strong>76.12% UNOSAT inundation</strong> (<code>99.7% HAND ≤ 10m</code>, <code>88.6% Stage-2 ML</code>) despite <code>166.19 mm</code> local rain (<code>R1 = 0</code>) and lying outside the 6 mapped <code>R2</code> basins (<code>R2 = 0</code>); it entered the <code>R3_R50</code> Watchlist alongside <em>Nam Phương Tiến (Chương Mỹ, Hà Nội — <code>VNM.27.6.15_1</code>)</em> at <strong>43.89% inundation</strong>. Likewise, unflagged pockets such as <em>Lệnh Khanh (Hạ Hoà, Phú Thọ — <code>VNM.44.3.16_1</code>)</em> missed all three Stage-1 rules but hit <strong>63.85% UNOSAT inundation</strong> and are recovered via <strong>94.6% Stage-2 ML</strong> inside the Gemini Exception Queue for officer review and proposed batch UBND attestation.
       </li>
       <li>
-        <strong>Out-of-Scan Satellite Blind Spot (Coverage Safeguard):</strong>
-        <em>Bạch Đằng (Hạ Long, Quảng Ninh — <code>VNM.49.7.1_1</code>)</em> recorded <code>237.07 mm</code> rainfall (<code>R1 = 1</code>) and core typhoon winds (<code>R3 = 1</code>), but lies among the <strong>355 communes outside the UNOSAT 3966 Red River Delta swath</strong> (<code>PARTIAL_OR_NO_ANALYSIS_COVERAGE</code>). Instead of coercing missing satellite data to <code>0%</code> flood, ResiLend preserves its coverage status as <em>Outside UNOSAT Scan</em> so coastal communes are never dropped due to satellite swath boundaries.
+        <strong>Out-of-Scan Satellite Blind Spot (Coverage Safeguard — <code>Bạch Đằng</code>):</strong>
+        <em>Bạch Đằng (Hạ Long, Quảng Ninh — <code>VNM.49.7.1_1</code>)</em> recorded <code>237.07 mm</code> rainfall (<code>R1 = 1</code>) and core typhoon winds (<code>R3 = 1</code>), but lies among the <strong>355 communes outside the UNOSAT 3966 Red River Delta swath</strong> (<code>PARTIAL_OR_NO_ANALYSIS_COVERAGE</code>). Instead of coercing missing satellite data or CV labels to <code>0%</code>, ResiLend preserves both its UNOSAT status as <em>Outside UNOSAT Scan</em> and its Stage-2 CV probability as <code>null</code> (<em>Unknown</em>) so coastal communes are never dropped due to satellite swath boundaries.
       </li>
     </ul>
 
@@ -732,12 +738,12 @@
         </thead>
         <tbody>
           <tr>
-            <td><strong>Decree 55/2015 &amp; Circular 29/2025</strong> require a borrower request (within ≤10 days overdue) and bank assessment.</td>
-            <td>After Stage-2 flood and UBND confirmation, a pre-filled <strong>1-Tap request</strong> via authenticated bank app/SMS captures timestamped borrower consent while keeping final approval strictly with the bank.</td>
+            <td><strong>Decree 55/2015 &amp; Circular 29/2025</strong> require a borrower request (processed while &lt;10 days overdue, before Group 2 migration) and bank assessment.</td>
+            <td>After Stage-2 flood and commune confirmation, a pre-filled <strong>1-Tap request</strong> via authenticated bank app/SMS captures timestamped borrower consent while keeping final approval strictly with the bank.</td>
           </tr>
           <tr>
             <td>Remote-sensing maps alone do not replace local government damage confirmation for debt freezing.</td>
-            <td>Generates a commune-level remote-sensing loss dossier so the <strong>Commune UBND signs a single batch confirmation for the entire commune</strong>, replacing thousands of individual household forms.</td>
+            <td>Generates a commune-level remote-sensing loss dossier as a <strong>proposed batch attestation</strong> for the Commune UBND to review—designed to streamline per-household paper forms, <em>subject to partner bank and local authority acceptance</em> (with counter paper intake retained).</td>
           </tr>
           <tr>
             <td><strong>Basis Risk:</strong> Flood damage occurs from upstream river crests (3–5 days post-storm) or outside mapped basins without local rain crossing 200 mm.</td>
@@ -745,15 +751,15 @@
           </tr>
           <tr>
             <td><strong>AI Hallucination &amp; Uncalibrated Scoring Risk</strong> in credit operations.</td>
-            <td>Gemini Copilot is strictly <strong>tool-grounded</strong> (executes deterministic functions over verified 2,895-commune JSON metrics and refuses out-of-scope prompts). Heuristic <code>0–100</code> scores order manual review priority and never auto-deny credit.</td>
+            <td>Gemini Copilot is strictly <strong>tool-grounded</strong> (executes 4 declared functions—<code>query_communes</code>, <code>plan_branch_triage</code>, <code>get_river_stations</code>, <code>dispatch_ui_action</code>—plus the dossier drafting workflow over verified 2,895-commune JSON metrics and refuses out-of-scope prompts). Heuristic <code>0–100</code> scores order manual review priority and never auto-deny credit.</td>
           </tr>
           <tr>
             <td><strong>Data Privacy &amp; Cloud LLM Security</strong> (Personal Data Protection Law &amp; Law on Credit Institutions 2024).</td>
             <td><strong>Strict Zero-PII boundary:</strong> Borrowers opt in at origination; both the ResiLend API and Google Gemini function calls transmit only administrative commune codes (<code>GID_3</code>) and public hazard telemetry—never transmitting borrower names, personal identifiers (PII), or individual loan balances to the cloud model.</td>
           </tr>
           <tr>
-            <td><strong>Adverse Selection / Bad-Debt Disguise:</strong> Risk of masking pre-existing delinquency as disaster relief.</td>
-            <td>Restricted to one restructuring per verified disaster event (3–6 months extension), eligible only for loans current or ≤10 days overdue at event onset, recorded in a 5-year immutable audit log.</td>
+            <td><strong>Adverse Selection / Pre-Existing Delinquency Masking:</strong> Risk of disguising prior arrears as disaster relief.</td>
+            <td>Restricted to one restructuring per verified disaster event (3–6 months extension), eligible only for loans current or &lt;10 days overdue in Group 1 at event onset, recorded in a 5-year immutable audit log.</td>
           </tr>
         </tbody>
       </table>
@@ -809,7 +815,7 @@
       ResiLend charges partner banks a one-time API integration fee plus an annual monitoring fee of <strong>10,000 – 20,000 VND per monitored loan per year</strong> (generating ~0.5 – 2 billion VND/year with one pilot institution, scaling to 22 – 58 billion VND/year across the SAM), alongside per-policy signal fees from parametric insurers.
     </p>
     <p>
-      Under <strong>Circular 29/2025/TT-NHNN</strong> and <strong>Circular 31/2024/TT-NHNN</strong>, an agricultural loan that misses the 10-day overdue restructuring window migrates to Group 2, requiring a <strong>5% specific provision</strong> under <strong>Decree 86/2024/NĐ-CP</strong> (calculated on outstanding balance net of deductible collateral). With an average rural loan exposure of <strong>290 million VND</strong> (4.2 quadrillion VND ÷ 14.6 million borrowers), preventing a single unsecured Group 2 downgrade avoids up to <strong>14.5 million VND</strong> in new provisioning. At a monitoring fee of <strong>20,000 VND/loan/year</strong>:
+      Under <strong>Circular 29/2025/TT-NHNN</strong> and <strong>Circular 31/2024/TT-NHNN</strong>, an agricultural loan whose restructuring is not completed while under 10 days overdue migrates to <strong>Group 2</strong> (attention-needed / special mention, not yet Group 3–5 bad debt), requiring a <strong>5% specific risk provision</strong> under <strong>Decree 86/2024/NĐ-CP</strong> (calculated on outstanding balance net of deductible collateral). With an average rural loan exposure of <strong>290 million VND</strong> (4.2 quadrillion VND ÷ 14.6 million borrowers), preventing a single unsecured Group 2 downgrade avoids up to <strong>14.5 million VND</strong> in potential additional provisioning (not a realized loss or penalty). At a monitoring fee of <strong>20,000 VND/loan/year</strong>:
     </p>
 
     <div class="equation-box">
@@ -841,8 +847,8 @@
           <tr>
             <td><strong>Manual Bank Restructuring</strong></td>
             <td>Permanent statutory basis under Decree 55/2015 &amp; Cir. 29/2025; proactive bank support.</td>
-            <td>Relies on manual borrower discovery; easily misses the 10-day overdue window.</td>
-            <td>Core user: ResiLend delivers Stage-1 Priority/Watchlist alerts and post-confirmation 1-Tap requests within the &lt;72h review window.</td>
+            <td>Relies on manual borrower discovery; easily misses the &lt;10-day Group 1 overdue window.</td>
+            <td>Core user: ResiLend delivers Stage-1 Priority/Watchlist alerts and post-confirmation 1-Tap requests, targeting a &lt;72h post-imagery review window in Phase 1 pilots.</td>
           </tr>
           <tr>
             <td><strong>Credit Life / Loan Insurance</strong> (e.g., ABIC <em>Bảo an tín dụng</em>)</td>
@@ -894,14 +900,14 @@
         </thead>
         <tbody>
           <tr>
-            <td>Elapsed time from hazard threshold crossing to reviewed debt-relief decision</td>
-            <td>Multiple weeks for manual tally; 88 days for Cir. 53/2024 non-agri guidance</td>
-            <td><strong>&lt; 72 hours</strong> (pilot target, subject to bank review)</td>
+            <td>Elapsed time from post-event confirmation imagery to reviewed debt-relief decision</td>
+            <td>Multiple weeks for manual tally; 88 days for Cir. 53/2024 non-agri guidance (retrospective Yagi S1 used an <code>08–20 Sep</code> window)</td>
+            <td><strong>&lt; 72 hours</strong> (Phase 1 pilot target; not proven end-to-end in retrospective backtest)</td>
           </tr>
           <tr>
-            <td>Share of opted-in borrowers in triggered communes receiving pre-filled relief offers within 72h</td>
+            <td>Share of opted-in borrowers in triggered communes receiving pre-filled relief offers within the pilot target window</td>
             <td>Gradual manual discovery (12,000 → &gt;28,000 over weeks at Agribank)</td>
-            <td><strong>≥ 80%</strong> of opted-in borrowers</td>
+            <td><strong>≥ 80%</strong> of opted-in borrowers (pilot SLA target)</td>
           </tr>
           <tr>
             <td>90-day post-disaster delinquency rate (Group 2+ migration)</td>
@@ -911,7 +917,7 @@
           <tr>
             <td>Local authority verification workload per affected commune</td>
             <td>Household-by-household paper certification</td>
-            <td>Single batch UBND sign-off + AI-triaged exception queue</td>
+            <td>Proposed batch UBND attestation (subject to bank &amp; UBND acceptance) + AI-triaged exception queue</td>
           </tr>
         </tbody>
       </table>
@@ -939,7 +945,7 @@
           <tr>
             <td><strong>Q2 / 2027</strong></td>
             <td><strong>Phase 2: Sandbox API &amp; UBND Protocol</strong></td>
-            <td>Deploy PostgreSQL/PostGIS + FastAPI Open API sandbox (<strong>Circular 64/2024</strong>); establish batch loss attestation workflow with pilot Commune People's Committees; onboard borrower opt-ins.</td>
+            <td>Deploy PostgreSQL/PostGIS + FastAPI Open API sandbox (<strong>Circular 64/2024</strong>); test and formalize acceptance of the proposed batch loss attestation workflow with partner banks and pilot Commune People's Committees; onboard borrower opt-ins.</td>
           </tr>
           <tr>
             <td><strong>Q3 / 2027</strong></td>
@@ -948,8 +954,8 @@
           </tr>
           <tr>
             <td><strong>Q4 / 2027 – Q2 / 2028</strong></td>
-            <td><strong>Phase 4: Calibration &amp; Ecosystem Expansion</strong></td>
-            <td>Evaluate pilot turnaround times, missed-flood rates, and Group 2 provision savings; calibrate local thresholds using anonymized loss records; connect parametric insurers (<strong>Decree 346/2026</strong>) and submit findings to SBV for non-agricultural credit expansion.</td>
+            <td><strong>Phase 4: Multi-Storm ML Calibration &amp; Expansion</strong></td>
+            <td>Evaluate pilot turnaround times, missed-flood rates, and Group 2 provision savings; run cross-event ML calibration combining <strong>GloFAS</strong> hourly river forecasts, anonymized multi-season bank default labels, and multimodal paper/photo intake; connect parametric insurers (<strong>Decree 346/2026</strong>) and submit findings to SBV for non-agricultural credit expansion.</td>
           </tr>
         </tbody>
       </table>

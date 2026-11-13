@@ -305,6 +305,22 @@ export function computeValidationMetrics(communes: CommuneYagiStatus[]) {
   const threeRules = classifiable.filter((c) => c.r1 && c.r2 === 1 && c.r3_r50);
   const threeRuleTp = threeRules.filter((c) => c.unosat_label === 1).length;
 
+  const s2Eval = classifiable.filter((c) => c.s2_ml_confirm !== null && c.s2_ml_confirm !== undefined);
+  const s2MlTp = s2Eval.filter((c) => c.s2_ml_confirm === true && c.unosat_label === 1).length;
+  const s2MlFp = s2Eval.filter((c) => c.s2_ml_confirm === true && c.unosat_label === 0).length;
+  const s2MlFn = s2Eval.filter((c) => c.s2_ml_confirm === false && c.unosat_label === 1).length;
+  const s2MlTn = s2Eval.filter((c) => c.s2_ml_confirm === false && c.unosat_label === 0).length;
+
+  const isWatchlist = (c: CommuneYagiStatus) => isR50All(c) && !isR1OrR2(c);
+  const watchlistClassifiable = classifiable.filter(isWatchlist);
+  const watchlistMlConfirmCount = watchlistClassifiable.filter((c) => c.s2_ml_confirm === true).length;
+  const watchlistFloodCaughtByMl = watchlistClassifiable.filter(
+    (c) => c.s2_ml_confirm === true && c.unosat_label === 1
+  ).length;
+  const earlyFnRecoveredByMlCount = pos.filter(
+    (c) => !isR50All(c) && c.s2_ml_confirm === true
+  ).length;
+
   return {
     total: communes.length,
     classifiableCount: classifiable.length,
@@ -314,7 +330,7 @@ export function computeValidationMetrics(communes: CommuneYagiStatus[]) {
     r1Total: communes.filter((c) => c.r1).length,
     r2Total: communes.filter(isR2).length,
     r1OrR2Total: communes.filter(isR1OrR2).length,
-    r3OnlyWatchlistTotal: communes.filter((c) => isR50All(c) && !isR1OrR2(c)).length,
+    r3OnlyWatchlistTotal: communes.filter(isWatchlist).length,
     r3R50Total: communes.filter((c) => c.r3_r50).length,
     r3R64Total: communes.filter((c) => c.r3_r64).length,
     r50AllTotal: communes.filter(isR50All).length,
@@ -322,6 +338,16 @@ export function computeValidationMetrics(communes: CommuneYagiStatus[]) {
     threeRuleTotal: communes.filter((c) => c.r1 && c.r2 === 1 && c.r3_r50).length,
     threeRuleFloodPct: threeRules.length ? (threeRuleTp / threeRules.length) * 100 : 0,
     s1FloodCount: communes.filter((c) => c.s1_label === 1).length,
+    s2MlClassifiableCount: s2Eval.length,
+    s2MlTp,
+    s2MlFp,
+    s2MlFn,
+    s2MlTn,
+    s2MlPrecision: s2MlTp + s2MlFp ? (s2MlTp / (s2MlTp + s2MlFp)) * 100 : 0,
+    s2MlRecall: s2MlTp + s2MlFn ? (s2MlTp / (s2MlTp + s2MlFn)) * 100 : 0,
+    watchlistMlConfirmCount,
+    watchlistFloodCaughtByMl,
+    earlyFnRecoveredByMlCount,
     r1Recall: pos.length ? (r1Tp / pos.length) * 100 : 0,
     r1Precision: r1ClassTotal ? (r1Tp / r1ClassTotal) * 100 : 0,
     r1Tp,

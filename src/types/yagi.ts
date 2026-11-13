@@ -30,6 +30,12 @@ export interface CommuneYagiStatus {
   unosat_label: number | null;
   s1_flood_pct: number | null;
   s1_label: number | null;
+  hand_le10_pct?: number;
+  s1_cov_pct?: number | null;
+  s2_ml_prob?: number | null;
+  s2_ml_confirm?: boolean | null;
+  s2_ml_fold?: number | null;
+  s2_ml_cutoff?: number | null;
   sim_loans: number;
   sim_debt_m_vnd: number;
 }

@@ -79,15 +79,15 @@ export function VerificationModal({ lang, open, onClose, communes }: Verificatio
               </div>
               <div className="rounded-[5px] border border-[#98c127]/40 bg-canvas p-2.5">
                 <div className="text-[11px] text-[#98c127]">
-                  {lang === 'en' ? 'Stage 2 · Post-Event S1 Confirmation' : 'Tầng 2 · Hậu kiểm Sentinel-1 (CV)'}
+                  {lang === 'en' ? 'Stage 2 · Post-Event ML Confirm' : 'Tầng 2 · Hậu kiểm ML Tầng 2 (CV)'}
                 </div>
                 <div className="mt-1 font-mono text-[15px] font-semibold text-[#CDECD7]">
-                  {lang === 'en' ? '79.11% Rec · 63.46% Prec' : '79,11% Rec · 63,46% Prec'}
+                  {formatPct(m.s2MlRecall, lang, 2)} Rec · {formatPct(m.s2MlPrecision, lang, 2)} Prec
                 </div>
                 <div className="text-[11px] text-inkMuted">
                   {lang === 'en'
-                    ? 'Retrospective S1+R2+R1+HAND CV (gates 1-Tap offer)'
-                    : 'Hậu kiểm 4-fold S1+R2+R1+HAND (trước 1-Chạm)'}
+                    ? `HistGradient CV (S1+HAND) · Watch ${m.watchlistFloodCaughtByMl}/321 · FN ${m.earlyFnRecoveredByMlCount}/63`
+                    : `HistGradient CV (S1+HAND) · Watch ${m.watchlistFloodCaughtByMl}/321 · Sót ${m.earlyFnRecoveredByMlCount}/63`}
                 </div>
               </div>
               <div className="rounded-[5px] border border-white/[0.07] bg-canvas p-2.5">
@@ -143,14 +143,14 @@ export function VerificationModal({ lang, open, onClose, communes }: Verificatio
             <p className="text-[12.5px] text-inkMuted">
               {lang === 'en' ? (
                 <>
-                  At an average <b className="text-ink">290M VND/loan</b>, shifting to Group 2 after 10 days requires{' '}
-                  <b className="text-ink">5% provision (~14.5M VND)</b> under Decree 86/2024. Against 20,000 VND/loan/yr monitoring cost, banks{' '}
+                  At an average <b className="text-ink">290M VND/loan</b>, migrating to Group 2 (special mention) at &ge;10 days overdue requires{' '}
+                  <b className="text-ink">5% specific provision (~14.5M VND potential)</b> under Decree 86/2024. Against 20,000 VND/loan/yr monitoring cost, banks{' '}
                   <b className="text-ink">break even saving 1 in 725 loans</b>.
                 </>
               ) : (
                 <>
-                  Với khoản vay bình quân <b className="text-ink">290 tr/khoản</b>, nhảy sang Nhóm 2 sau 10 ngày phải trích{' '}
-                  <b className="text-ink">5% dự phòng (~14,5 tr/khoản)</b> theo NĐ 86/2024. So với phí theo dõi 20.000 đ/khoản/năm, ngân hàng{' '}
+                  Với khoản vay bình quân <b className="text-ink">290 tr/khoản</b>, chuyển sang Nhóm 2 (nợ cần chú ý) từ 10 ngày quá hạn phải trích{' '}
+                  <b className="text-ink">5% dự phòng cụ thể (tiềm năng ~14,5 tr/khoản)</b> theo NĐ 86/2024. So với phí theo dõi 20.000 đ/khoản/năm, ngân hàng{' '}
                   <b className="text-ink">hòa vốn khi giữ được 1/725 khoản vay</b>.
                 </>
               )}

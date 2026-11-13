@@ -204,8 +204,8 @@ export function SignalGlossaryModal({
                 </div>
                 <p className="mt-1 text-[12px] leading-relaxed text-inkMuted">
                   {isEn
-                    ? 'Agri restructuring requires borrower request within ≤10 days overdue; non-agri relief waited 88 days for Cir. 53/2024 after Yagi.'
-                    : 'Cửa sổ 10 ngày nhận đề nghị 1-chạm giữ nhóm nợ nông nghiệp (với ngoài nông nghiệp sau Yagi phải chờ 88 ngày mới có TT 53/2024).'}
+                    ? 'Agri restructuring must finish while the loan is current or <10 days overdue; non-agri relief waited 88 days for Cir. 53/2024 after Yagi.'
+                    : 'Cửa sổ dưới 10 ngày quá hạn để nhận đề nghị 1-chạm giữ Nhóm 1 nông nghiệp (ngoài nông nghiệp sau Yagi phải chờ 88 ngày mới có TT 53/2024).'}
                 </p>
               </div>
 
@@ -215,8 +215,8 @@ export function SignalGlossaryModal({
                 </div>
                 <p className="mt-1 text-[12px] leading-relaxed text-inkMuted">
                   {isEn
-                    ? 'Retaining Debt Group 1 avoids downgrading to Group 2, preventing a 5% loan-loss provision charge on the bank.'
-                    : 'Giữ nguyên Nhóm nợ 1 giúp khoản vay không rớt sang Nhóm 2 — qua đó tránh phải trích lập 5% dự phòng rủi ro theo NĐ 86/2024.'}
+                    ? 'Retaining Debt Group 1 avoids migrating to Group 2 (special mention), preventing a 5% potential specific risk provision under Dec. 86/2024.'
+                    : 'Giữ nguyên Nhóm nợ 1 giúp khoản vay không rớt sang Nhóm 2 (nợ cần chú ý) — qua đó tránh phải trích lập 5% dự phòng rủi ro theo NĐ 86/2024.'}
                 </p>
               </div>
 
