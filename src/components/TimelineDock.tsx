@@ -125,11 +125,11 @@ export function TimelineDock({
           <span>
             {campaignLaunched
               ? lang === 'en'
-                ? 'Regional Circular 29 offers sent'
-                : 'Đã gửi giãn nợ TT 29 toàn vùng'
+                ? 'Confirmed Cir. 29 offers sent'
+                : 'Đã phát đề xuất giãn nợ đã xác nhận'
               : lang === 'en'
-              ? 'Send regional deferral offers'
-              : 'Gửi đề xuất giãn nợ toàn vùng'}
+              ? 'Send confirmed deferral offers'
+              : 'Phát đề xuất giãn nợ đã xác nhận'}
           </span>
         </button>
       </div>

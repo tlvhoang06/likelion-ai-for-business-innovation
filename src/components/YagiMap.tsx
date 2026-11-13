@@ -26,7 +26,10 @@ interface YagiMapProps {
   stats: {
     triggeredCount: number;
     r1Count: number;
+    r2Count: number;
     r3Count: number;
+    priorityCount: number;
+    watchlistCount: number;
     triggeredLoans: number;
     triggeredDebtM: number;
     savedLoans: number;
@@ -57,17 +60,22 @@ function buildCalloutHtml(
   lang: Lang
 ): string {
   const ev = evaluateCommuneAtDate(c, dateStr, layers);
+  const activeTags = [
+    ev.r1On ? 'R1' : null,
+    ev.r2On ? 'R2' : null,
+    ev.r3On ? 'R3' : null,
+  ].filter(Boolean);
   let statusText = lang === 'en' ? 'Not triggered' : 'Chưa chạm ngưỡng';
-  if (ev.count === 2) {
-    statusText = lang === 'en' ? '2 rules R1+R3' : '2 nguồn R1+R3';
+  if (ev.count >= 2) {
+    statusText =
+      lang === 'en'
+        ? `${ev.count} rules (${activeTags.join('+')})`
+        : `${ev.count} nguồn (${activeTags.join('+')})`;
   } else if (ev.count === 1) {
-    statusText = ev.r1On
-      ? lang === 'en'
-        ? '1 rule R1'
-        : '1 nguồn R1'
-      : lang === 'en'
-      ? '1 rule R3'
-      : '1 nguồn R3';
+    statusText =
+      lang === 'en'
+        ? `1 rule (${activeTags[0]})`
+        : `1 nguồn (${activeTags[0]})`;
   } else if (ev.unosatFlood) {
     statusText = lang === 'en' ? 'UNOSAT flood' : 'Ngập UNOSAT';
   } else if (ev.s1Flood) {
@@ -251,13 +259,19 @@ export function YagiMap({
             c.unosat_flood_pct !== null
               ? `${c.unosat_flood_pct.toFixed(1)}% ngập`
               : 'Ngoài UNOSAT';
+          const r2Text =
+            c.r2 === 1 && c.r2_station
+              ? ` &middot; R2: ${escHtml(c.r2_station)} (&gt;BĐ3)`
+              : c.r2_station === 'Ha Noi'
+              ? ' &middot; Hà Nội (&lt;BĐ3)'
+              : '';
           pathLayer
             .bindTooltip(
               `<div style="font-family:'IBM Plex Sans',sans-serif;line-height:1.4">
                 <div style="font-weight:600;color:#F8FAFC">${escHtml(c.name)}</div>
                 <div style="color:#9CA6B4;font-size:11px">${escHtml(c.district)}, ${escHtml(c.province)}</div>
                 <div style="margin-top:4px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#CBD5E1">
-                  Mưa: ${c.rain_mm}mm &middot; UNOSAT: ${unoText}<br/>
+                  Mưa: ${c.rain_mm}mm &middot; UNOSAT: ${unoText}${r2Text}<br/>
                   Khớp ngày ${d.slice(8, 10)}/${d.slice(5, 7)}: ${ev.count} nguồn &middot; ${c.sim_loans} khoản
                 </div>
               </div>`,
@@ -592,8 +606,17 @@ export function YagiMap({
             dotColor={SIGNAL_COLORS.r1}
             label={lang === 'en' ? 'R1 Rain Art.44' : 'R1 Mưa Đ.44'}
             count={formatNum(1169, lang)}
-            className="min-w-[130px] flex-1 sm:min-w-0"
+            className="min-w-[116px] flex-1 sm:min-w-0"
             onClick={() => onToggleLayer('r1')}
+          />
+
+          <LayerPill
+            active={layers.r2}
+            dotColor={SIGNAL_COLORS.r2}
+            label={lang === 'en' ? 'R2 River AL3' : 'R2 Lũ BĐ3'}
+            count={formatNum(215, lang)}
+            className="min-w-[112px] flex-1 sm:min-w-0"
+            onClick={() => onToggleLayer('r2')}
           />
 
           {/* Clean R3 Wind Pill + Separate Matte R50/R64 Segmented Switch */}
@@ -681,15 +704,22 @@ export function YagiMap({
         </div>
 
         {/* Bold Uniformly Highlighted Regional Telemetry Readout */}
-        <div className="flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-1.5 border-t border-line pt-2 text-[12.5px] font-bold text-[#F1F5F9]">
+        <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-1.5 border-t border-line pt-2 text-[12px] font-bold text-[#F1F5F9]">
           <div className="flex items-baseline gap-1.5">
-            <span>{lang === 'en' ? 'Triggered communes:' : 'Xã kích hoạt:'}</span>
+            <span>{lang === 'en' ? 'Early Flag (R1|R2|R3):' : 'Cảnh báo sớm:'}</span>
             <span className="font-mono tabular-nums">
               {formatNum(stats.triggeredCount, lang)} / {formatNum(2895, lang)}
             </span>
           </div>
-          <div className="hidden items-baseline gap-1.5 sm:flex">
-            <span>{lang === 'en' ? 'Portfolio at risk (sim):' : 'Dư nợ vùng (giả lập):'}</span>
+          <div className="hidden items-baseline gap-1.5 md:flex">
+            <span className="text-[#8ACBB5]">{lang === 'en' ? 'Priority R1|R2:' : 'Ưu tiên R1|R2:'}</span>
+            <span className="font-mono tabular-nums">{formatNum(stats.priorityCount, lang)}</span>
+            <span className="text-inkDim">·</span>
+            <span className="text-[#ff8ca1]">{lang === 'en' ? 'Watchlist R3:' : 'Theo dõi R3:'}</span>
+            <span className="font-mono tabular-nums">{formatNum(stats.watchlistCount, lang)}</span>
+          </div>
+          <div className="hidden items-baseline gap-1.5 xl:flex">
+            <span>{lang === 'en' ? 'Portfolio at risk (sim):' : 'Dư nợ (giả lập):'}</span>
             <span className="font-mono tabular-nums">
               {formatVndBillions(stats.triggeredDebtM, lang)}
             </span>
@@ -745,12 +775,34 @@ export function YagiMap({
             <div className="flex items-center gap-2">
               <span
                 className="inline-block h-2 w-2 rounded-[1px]"
+                style={{ backgroundColor: SIGNAL_COLORS.overlap3 }}
+              />
+              <span>
+                {lang === 'en'
+                  ? '3 rules (R1+R2+R3 · 67.4% flood)'
+                  : '3 nguồn (R1+R2+R3 · 67,4% ngập)'}
+              </span>
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <span
+                className="inline-block h-2 w-2 rounded-[1px]"
                 style={{ backgroundColor: SIGNAL_COLORS.overlap }}
               />
               <span>
                 {lang === 'en'
-                  ? '2 rules matched (R1 rain + R3 wind)'
-                  : '2 nguồn khớp (R1 mưa + R3 gió)'}
+                  ? '2 rules matched (Priority Review)'
+                  : '2 nguồn khớp (Rà soát Ưu tiên)'}
+              </span>
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <span
+                className="inline-block h-2 w-2 rounded-[1px]"
+                style={{ backgroundColor: SIGNAL_COLORS.r2 }}
+              />
+              <span>
+                {lang === 'en'
+                  ? 'R2 River Stage >AL3 (215 communes)'
+                  : 'R2 Lũ sông >BĐ3 (215 xã)'}
               </span>
             </div>
             <div className="mt-1 flex items-center gap-2">
@@ -760,8 +812,8 @@ export function YagiMap({
               />
               <span>
                 {lang === 'en'
-                  ? 'R1 Rain Art.44 only (>200mm)'
-                  : 'Chỉ R1 Mưa Đ.44 (>200mm)'}
+                  ? 'R1 Rain Art.44 (>200mm)'
+                  : 'R1 Mưa Đ.44 (>200mm)'}
               </span>
             </div>
             <div className="mt-1 flex items-center gap-2">
@@ -772,7 +824,7 @@ export function YagiMap({
                 }}
               />
               <span>
-                {lang === 'en' ? 'R3 Wind R50 / R64 only' : 'Chỉ R3 Gió R50 / R64'}
+                {lang === 'en' ? 'R3 Wind Watchlist (R50/R64)' : 'Chỉ R3 Gió (Watchlist R50/R64)'}
               </span>
             </div>
             <div className="mt-1 flex items-center gap-2">

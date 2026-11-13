@@ -20,9 +20,9 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     titleVi: 'Bản đồ 12 tỉnh & từng lớp tín hiệu',
     titleEn: '12-Province Map & Signal Layers',
     bodyVi:
-      'Lần lượt bật R1 Mưa (>200mm), R3 Gió, vệ tinh UNOSAT 3966 và Radar Sentinel-1. Bấm trực tiếp từng thẻ trên bản đồ để tự phối hợp.',
+      'Lần lượt bật R1 Mưa (>200mm), R2 Lũ sông (>BĐ3, 215 xã), R3 Gió, vệ tinh UNOSAT 3966 và Radar Sentinel-1. Bấm trực tiếp từng thẻ trên bản đồ để tự phối hợp.',
     bodyEn:
-      'Sequentially enables R1 Rain (>200mm), R3 Wind, UNOSAT 3966, and Sentinel-1 SAR. Click any layer bar above to toggle directly.',
+      'Sequentially enables R1 Rain (>200mm), R2 River >AL3 (215 communes), R3 Wind, UNOSAT 3966, and Sentinel-1 SAR. Click any layer pill above to toggle directly.',
   },
   {
     id: 'drill',
@@ -87,9 +87,9 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     titleVi: 'Kiểm chứng thực nghiệm & Pháp lý',
     titleEn: 'Empirical Audit & Legal Basis',
     bodyVi:
-      'Đối chiếu độ phủ R1/R3 với đáp án ngập UNOSAT trên 2.895 xã cùng căn cứ TT 29/2025, NĐ 86/2024, QĐ 18/2021 và NĐ 346/2026.',
+      'Tách biệt Cảnh báo sớm R1|R2|R3 (27,35% Prec / 91,23% Rec) và Hậu kiểm Sentinel-1 (63,46% / 79,11%) trước khi gửi đề xuất 1-Chạm, cùng căn cứ TT 29/2025, NĐ 86/2024, QĐ 18/2021 và NĐ 346/2026.',
     bodyEn:
-      'Compares R1/R3 accuracy vs UNOSAT across 2,895 communes with statutory mapping to Cir. 29/2025, Dec. 86/2024, and Dec. 18/2021.',
+      'Separates R1|R2|R3 early alert (27.35% Prec / 91.23% Rec) from post-event S1 confirmation (63.46% / 79.11%) before 1-Tap dispatch, mapped to Cir. 29/2025, Dec. 86/2024, and Dec. 18/2021.',
   },
 ];
 

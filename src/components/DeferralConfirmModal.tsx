@@ -47,7 +47,7 @@ export function DeferralConfirmModal({
   const debtM = isRegional ? stats.triggeredDebtM : commune!.sim_debt_m_vnd;
   const provisionSavedM = debtM * 0.05;
   const needsManualFallbackNote =
-    commune !== null && !commune.r1 && !commune.r3_r50;
+    commune !== null && !commune.r1 && commune.r2 !== 1 && !commune.r3_r50;
 
   return (
     <div
@@ -90,11 +90,11 @@ export function DeferralConfirmModal({
             <p className="mt-0.5 text-[12px] text-inkMuted">
               {isRegional
                 ? lang === 'en'
-                  ? `Observed ${formattedDate} · Broadcast SMS / mobile banking deferral offers to all triggered communes.`
-                  : `Mốc quan trắc ${formattedDate} · Phát đề xuất đồng loạt qua SMS / App ngân hàng tới các xã chạm ngưỡng.`
+                  ? `Observed ${formattedDate} · Dispatch 1-Tap App/SMS offers for post-confirmation communes (R1|R2 Priority & confirmed R3 Watchlist).`
+                  : `Mốc quan trắc ${formattedDate} · Phát đề xuất 1-Chạm qua App/SMS cho các xã đã hậu kiểm thiệt hại (từ luồng Ưu tiên R1|R2 & Watchlist R3).`
                 : lang === 'en'
-                ? `${commune!.district}, ${commune!.province} (${commune!.gid_3}) · Rain ${commune!.rain_mm}mm${commune!.r3_r50 ? ' · Wind R50' : ''}`
-                : `${commune!.district}, ${commune!.province} (${commune!.gid_3}) · Mưa ${commune!.rain_mm}mm${commune!.r3_r50 ? ' · Gió R50' : ''}`}
+                ? `${commune!.district}, ${commune!.province} (${commune!.gid_3}) · Rain ${commune!.rain_mm}mm${commune!.r2 === 1 && commune!.r2_station ? ` · River ${commune!.r2_station} (>AL3)` : ''}${commune!.r3_r50 ? ' · Wind R50' : ''}`
+                : `${commune!.district}, ${commune!.province} (${commune!.gid_3}) · Mưa ${commune!.rain_mm}mm${commune!.r2 === 1 && commune!.r2_station ? ` · Lũ ${commune!.r2_station} (>BĐ3)` : ''}${commune!.r3_r50 ? ' · Gió R50' : ''}`}
             </p>
           </div>
           <button
@@ -152,18 +152,16 @@ export function DeferralConfirmModal({
             {lang === 'en' ? (
               <>
                 <p>
-                  &bull; Retain <b className="text-ink">Debt Group 1</b> and offer{' '}
-                  <b className="text-ink">3–6 month deferral</b> within the 10-day overdue window (Art. 3.1 Circular 29/2025/TT-NHNN).
+                  &bull; Two-stage compliance: dispatch 1-Tap offer only <b className="text-ink">after Sentinel-1 / UBND flood confirmation</b>, retaining <b className="text-ink">Debt Group 1</b> (3–6m extension) inside the 10-day window (Decree 55/2015 / 156/2025 &amp; Cir. 29/2025).
                 </p>
                 <p>
-                  &bull; Avoid <b className="text-ink">5% Group 2 provisioning</b> (Decree 86/2024); retain counter paper applications for unconnected borrowers.
+                  &bull; Avoid <b className="text-ink">5% Group 2 provisioning</b> (Decree 86/2024); keep paper counter intake open for unconnected households.
                 </p>
               </>
             ) : (
               <>
                 <p>
-                  &bull; Giữ nguyên <b className="text-ink">Nhóm nợ 1</b> và áp dụng gia hạn trả nợ{' '}
-                  <b className="text-ink">3–6 tháng</b> trong cửa sổ 10 ngày quá hạn (Khoản 1 Đ.3 TT 29/2025/TT-NHNN).
+                  &bull; Đúng quy trình 2 tầng: chỉ phát đề xuất 1-Chạm <b className="text-ink">sau bước xác nhận thiệt hại (Sentinel-1 / UBND)</b>, giữ <b className="text-ink">Nhóm nợ 1</b> gia hạn <b className="text-ink">3–6 tháng</b> trong cửa sổ ≤10 ngày (NĐ 55/2015 / 156/2025 &amp; TT 29/2025).
                 </p>
                 <p>
                   &bull; Miễn trích lập <b className="text-ink">5% dự phòng Nhóm 2</b> theo NĐ 86/2024; duy trì kênh nộp đơn giấy tại quầy cho hộ không dùng smartphone hoặc mất sóng.
@@ -173,8 +171,8 @@ export function DeferralConfirmModal({
             {needsManualFallbackNote && (
               <p className="text-[#FCD34D]">
                 {lang === 'en'
-                  ? '• Note: This commune did not hit automatic R1/R3 thresholds — recorded under exception / safety-net route.'
-                  : '• Lưu ý: Xã này chưa chạm ngưỡng R1/R3 tự động trong dữ liệu sự kiện — ghi nhận theo diện lưới an toàn / chờ cán bộ tín dụng đối chiếu.'}
+                  ? '• Note: This commune did not hit automatic R1/R2/R3 thresholds — recorded under exception / safety-net route.'
+                  : '• Lưu ý: Xã này chưa chạm ngưỡng R1/R2/R3 tự động trong dữ liệu sự kiện — ghi nhận theo diện lưới an toàn / chờ cán bộ tín dụng đối chiếu.'}
               </p>
             )}
           </div>

@@ -41,7 +41,10 @@ interface OperationalDrawerProps {
   stats: {
     triggeredCount: number;
     r1Count: number;
+    r2Count: number;
     r3Count: number;
+    priorityCount: number;
+    watchlistCount: number;
     triggeredLoans: number;
     triggeredDebtM: number;
     savedLoans: number;
@@ -144,8 +147,12 @@ export function OperationalDrawer({
         observed_date: dateStr,
         triggered_communes: stats.triggeredCount,
         r1_triggered_communes: stats.r1Count,
+        r2_triggered_communes: stats.r2Count,
         r3_triggered_communes: stats.r3Count,
+        priority_review_r1_or_r2: stats.priorityCount,
+        watchlist_r3_only: stats.watchlistCount,
         r2_river_stations_bd3: stations.filter((s) => isStationActiveAtDate(s, dateStr)).length,
+        r2_crosswalk_status: 'RESOLVED_6_NORTHERN_BASINS_2895_COMMUNES_0_UNRESOLVED_CONFLUENCES',
         ai_triage_whatif: {
           score_threshold: whatIf.threshold,
           baseline_r1_recall_pct: Number(whatIf.baselineRecallPct.toFixed(1)),
@@ -178,10 +185,23 @@ export function OperationalDrawer({
           first_trigger_ict: c.r1_time,
         },
         r2_river_qd05: {
-          status: 'STATION_LEVEL_ONLY_PENDING_GID3_CROSSWALK',
+          triggered: signalEval.r2On,
+          station: c.r2_station ?? null,
+          river: c.r2_river ?? null,
+          distance_km: c.r2_distance_km ?? null,
+          hand_le10_pct: c.r2_hand_le10_pct ?? null,
+          first_bd3_bulletin_ict: c.r2_first_bulletin_ict ?? null,
+          peak_time_ict: c.r2_peak_time_ict ?? null,
+          assignment_status: c.r2_status ?? 'NO_SELECTED_NAMED_RIVER_LINE_INTERSECTION',
           stations_above_bd3: stations.filter((s) => isStationActiveAtDate(s, dateStr))
             .length,
         },
+        workflow_track:
+          signalEval.r1On || signalEval.r2On
+            ? 'PRIORITY_REVIEW_R1_OR_R2_CONFIRM_BEFORE_1TAP'
+            : signalEval.r3On
+            ? 'WATCHLIST_R3_WIND_ONLY_NEEDS_CONFIRMATION'
+            : 'MONITORING',
         r3_wind: {
           threshold: layers.useR64 ? 'R64' : 'R50',
           triggered: signalEval.r3On,
@@ -213,7 +233,10 @@ export function OperationalDrawer({
     dateStr,
     stats.triggeredCount,
     stats.r1Count,
+    stats.r2Count,
     stats.r3Count,
+    stats.priorityCount,
+    stats.watchlistCount,
     stats.triggeredLoans,
     whatIf.threshold,
     whatIf.baselineRecallPct,
@@ -353,10 +376,34 @@ export function OperationalDrawer({
             />
             <SignalRow
               label={isEn ? 'R2 River Stage (Dec. 05)' : 'R2 Mực nước sông (QĐ 05)'}
-              value={isEn ? '11 gauges' : '11 trạm thủy văn'}
-              status={isEn ? 'Pending GID_3 link' : 'Chờ nối GID_3 xã'}
-              dotColor={SIGNAL_COLORS.r2}
-              mutedStatus
+              value={
+                c.r2 === 1 && c.r2_station
+                  ? `${c.r2_station}${c.r2_distance_km ? ` (${c.r2_distance_km.toFixed(1)}km)` : ''}`
+                  : c.r2_station === 'Ha Noi'
+                  ? isEn
+                    ? 'Ha Noi (11.30m < AL3)'
+                    : 'Trạm Hà Nội (< BĐ3)'
+                  : isEn
+                  ? 'No 6-basin river cut'
+                  : 'Không cắt 6 tuyến sông'
+              }
+              status={
+                signalEval.r2On
+                  ? c.r2_first_bulletin_ict
+                    ? c.r2_first_bulletin_ict.slice(5, 16)
+                    : c.r2_station === 'Yen Bai'
+                    ? '09-08 19:00–21:47*'
+                    : '> BĐ3'
+                  : c.r2 === 1
+                  ? isEn
+                    ? 'Pre-AL3 date'
+                    : 'Chưa vượt BĐ3'
+                  : c.r2_station === 'Ha Noi'
+                  ? 'R2 = 0 (< BĐ3)'
+                  : 'R2 = 0'
+              }
+              dotColor={signalEval.r2On ? SIGNAL_COLORS.r2 : undefined}
+              mutedStatus={c.r2 !== 1}
             />
             <SignalRow
               label="UNOSAT 3966 / Sentinel-1"
@@ -421,12 +468,14 @@ export function OperationalDrawer({
           <div className="mt-3 grid grid-cols-2 gap-2">
             <div className="rounded-[6px] border border-lineStrong bg-canvas px-3 py-2">
               <div className="text-[11px] text-inkDim">
-                {isEn ? 'R1/R3 Triggered Communes' : 'Xã chạm ngưỡng R1/R3'}
+                {isEn ? 'Priority R1|R2 vs Watchlist R3' : 'Ưu tiên R1|R2 vs Watchlist R3'}
               </div>
-              <div className="mt-0.5 font-mono text-[15px] font-semibold text-ink tabular-nums">
-                {formatNum(stats.triggeredCount, lang)}{' '}
-                <span className="text-[12px] font-normal text-inkDim">
-                  / {formatNum(communes.length, lang)}
+              <div className="mt-0.5 font-mono text-[13.5px] font-semibold tabular-nums">
+                <span className="text-[#8ACBB5]">{formatNum(stats.priorityCount, lang)}</span>{' '}
+                <span className="text-inkDim">/</span>{' '}
+                <span className="text-[#ff8ca1]">{formatNum(stats.watchlistCount, lang)}</span>{' '}
+                <span className="text-[11px] font-normal text-inkDim">
+                  ({formatNum(stats.triggeredCount, lang)}/2.895)
                 </span>
               </div>
             </div>
@@ -556,17 +605,29 @@ export function OperationalDrawer({
                 <p className="mt-2.5 text-[13px] leading-relaxed text-ink">
                   {isEn ? (
                     <>
-                      <b>{c.name} Commune</b> ({c.province}) recorded Typhoon Yagi hazard signals
-                      (rain {c.rain_mm}mm{c.r3_r50 ? ', wind R50' : ''}). You qualify to request{' '}
-                      <b>3–6 month debt deferral while retaining Credit Group 1</b> within the
-                      10-day overdue window.
+                      <b>{c.name} Commune</b> ({c.province}) is classified in{' '}
+                      <b>
+                        {c.r1 || c.r2 === 1
+                          ? 'Priority Review (R1|R2)'
+                          : c.r3_r50
+                          ? 'Wind Watchlist (R3-only)'
+                          : 'Exception Monitoring'}
+                      </b>{' '}
+                      (rain {c.rain_mm}mm{c.r2 === 1 && c.r2_station ? `, river ${c.r2_station} >AL3` : ''}{c.r3_r50 ? ', wind R50' : ''}). After damage confirmation (Sentinel-1 / UBND), dispatch a 1-tap{' '}
+                      <b>3–6 month Group 1 deferral offer</b> inside the 10-day window.
                     </>
                   ) : (
                     <>
-                      Địa bàn <b>Xã {c.name}</b> ({c.province}) ghi nhận tín hiệu thiên tai Bão
-                      Yagi (mưa {c.rain_mm}mm{c.r3_r50 ? ', gió R50' : ''}). Quý khách đủ điều kiện
-                      đề nghị <b>giãn nợ 3–6 tháng và giữ nguyên Nhóm nợ 1</b> trong cửa sổ 10 ngày
-                      quá hạn.
+                      Địa bàn <b>Xã {c.name}</b> ({c.province}) thuộc diện{' '}
+                      <b>
+                        {c.r1 || c.r2 === 1
+                          ? 'Rà soát Ưu tiên (R1|R2)'
+                          : c.r3_r50
+                          ? 'Theo dõi Watchlist (chỉ gió R3)'
+                          : 'Theo dõi Ngoại lệ'}
+                      </b>{' '}
+                      (mưa {c.rain_mm}mm{c.r2 === 1 && c.r2_station ? `, lũ ${c.r2_station} >BĐ3` : ''}{c.r3_r50 ? ', gió R50' : ''}). Sau bước xác nhận thiệt hại (Sentinel-1 / UBND), gửi đề nghị{' '}
+                      <b>giãn nợ 3–6 tháng giữ Nhóm 1</b> trong cửa sổ 10 ngày.
                     </>
                   )}
                 </p>
@@ -630,24 +691,16 @@ export function OperationalDrawer({
                   {isEn ? (
                     <>
                       As of <b className="text-ink">{displayDate}</b>:{' '}
-                      <b className="text-ink">
-                        {formatNum(stats.triggeredCount, lang)} triggered communes
-                      </b>{' '}
-                      &middot;{' '}
-                      <b className="text-ink">
-                        {formatNum(stats.triggeredLoans, lang)} loans
-                      </b>{' '}
-                      (~{formatVndBillions(stats.triggeredDebtM, lang)}). Sends 1-tap deferral notice inside the 10-day window.
+                      <b className="text-[#8ACBB5]">{formatNum(stats.priorityCount, lang)} Priority (R1|R2)</b> +{' '}
+                      <b className="text-[#ff8ca1]">{formatNum(stats.watchlistCount, lang)} Watchlist (R3)</b>{' '}
+                      ({formatNum(stats.triggeredLoans, lang)} loans, ~{formatVndBillions(stats.triggeredDebtM, lang)}). Sends 1-tap offers post-confirmation inside the 10-day window.
                     </>
                   ) : (
                     <>
                       Mốc <b className="text-ink">{displayDate}</b>:{' '}
-                      <b className="text-ink">{formatNum(stats.triggeredCount, lang)} xã</b> chạm
-                      ngưỡng &middot;{' '}
-                      <b className="text-ink">
-                        {formatNum(stats.triggeredLoans, lang)} khoản vay
-                      </b>{' '}
-                      (~{formatVndBillions(stats.triggeredDebtM, lang)}). Phát đề xuất thu xác nhận trong 10 ngày.
+                      <b className="text-[#8ACBB5]">{formatNum(stats.priorityCount, lang)} xã Ưu tiên (R1|R2)</b> +{' '}
+                      <b className="text-[#ff8ca1]">{formatNum(stats.watchlistCount, lang)} xã Watchlist (R3)</b>{' '}
+                      ({formatNum(stats.triggeredLoans, lang)} khoản, ~{formatVndBillions(stats.triggeredDebtM, lang)}). Phát đề xuất 1-Chạm sau xác nhận thiệt hại.
                     </>
                   )}
                 </p>
@@ -760,10 +813,11 @@ export function OperationalDrawer({
                   </div>
                   <div className="flex justify-between gap-2 border-b border-line/60 pb-1.5">
                     <span className="text-inkDim">
-                      {isEn ? 'Meteorological R1 / R3' : 'Chỉ số khí tượng R1 / R3'}
+                      {isEn ? 'Early Alert R1 / R2 / R3' : 'Cảnh báo R1 / R2 / R3'}
                     </span>
                     <span className="font-mono text-ink">
-                      {c.rain_mm}mm &middot; R50:{' '}
+                      {c.rain_mm}mm &middot;{' '}
+                      {c.r2 === 1 ? `R2 ${c.r2_station ?? '>BĐ3'}` : 'R2 —'} &middot; R50:{' '}
                       {c.r3_r50 ? (isEn ? 'Yes' : 'Có') : isEn ? 'No' : 'Không'}
                     </span>
                   </div>
@@ -1250,11 +1304,11 @@ export function OperationalDrawer({
               <Waves className="mt-0.5 h-4 w-4 shrink-0 text-inkMuted" strokeWidth={1.75} />
               <div>
                 <b className="font-medium text-ink">
-                  {isEn ? '11 Gauges (Dec. 05):' : '11 trạm thủy văn (QĐ 05):'}
+                  {isEn ? '11 Gauges -> 2,895-Commune R2 Crosswalk:' : '11 trạm thủy văn -> Khớp R2 toàn 2.895 xã:'}
                 </b>{' '}
                 {isEn
-                  ? '10/11 exceeded AL3 (10–12 Sep); Hanoi peaked 11.30m (< AL3 0.20m). Kept at station level.'
-                  : '10/11 trạm vượt BĐ3 (10–12/09); Hà Nội 11,30m (dưới BĐ3 0,20m). Dữ liệu cấp trạm.'}
+                  ? '5 AL3 stations map 215 R2=1 communes (0 unresolved confluences); 109 Hanoi communes map < AL3 (11.30m vs 11.50m). Yên Bái earliest-BĐ3 minute is bounded 08/09 19:00–21:47*.'
+                  : '5 trạm vượt BĐ3 nối 215 xã R2=1 (0 giao cắt trùng chưa xử lý); 109 xã Hà Nội dưới BĐ3 (11,30m < 11,50m). Mốc phút BĐ3 sớm nhất Yên Bái trong khoảng 08/09 19:00–21:47*.'}
               </div>
             </div>
 
@@ -1272,13 +1326,19 @@ export function OperationalDrawer({
                       {isEn ? 'AL3' : 'BĐ3'}
                     </th>
                     <th className="px-2.5 py-2 text-right font-medium">
-                      {isEn ? 'Status at Date' : 'Đỉnh theo ngày'}
+                      {isEn ? 'BĐ3 Status' : 'Mốc BĐ3'}
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
                   {stations.map((s) => {
                     const activeAtDate = isStationActiveAtDate(s, dateStr);
+                    const bulletinLabel = s.first_bd3_bulletin_ict
+                      ? s.first_bd3_bulletin_ict.slice(5, 16)
+                      : s.bulletin_evidence_status ===
+                          'ABOVE_CONFIRMED_EARLIEST_BULLETIN_BOUNDED_1900_2147_08SEP'
+                        ? '09-08 19–21:47*'
+                        : s.peak_time_ict.slice(5, 16);
                     return (
                       <tr
                         key={s.station}
@@ -1288,6 +1348,9 @@ export function OperationalDrawer({
                           <div className="font-medium text-ink">{s.station}</div>
                           <div className="text-[11px] text-inkDim">
                             {isEn ? 'River' : 'Sông'} {s.river} · {s.province}
+                            {s.mapped_communes
+                              ? ` · ${s.mapped_communes} ${isEn ? 'comm.' : 'xã'}`
+                              : ''}
                           </div>
                         </td>
                         <td className="px-2.5 py-1.5 text-right font-mono text-ink tabular-nums">
@@ -1312,13 +1375,13 @@ export function OperationalDrawer({
                                 style={{ backgroundColor: SIGNAL_COLORS.r2Alert }}
                               />
                               <span>
-                                &gt;{isEn ? 'AL3' : 'BĐ3'} · {s.peak_time_ict.slice(5, 16)}
+                                &gt;{isEn ? 'AL3' : 'BĐ3'} · {bulletinLabel}
                               </span>
                             </span>
                           ) : (
                             <span className="text-inkDim">
-                              {isEn ? 'Pending' : 'Chờ'} {s.peak_time_ict.slice(8, 10)}/
-                              {s.peak_time_ict.slice(5, 7)}
+                              {isEn ? 'Pending' : 'Chờ'} {bulletinLabel.slice(3, 5)}/
+                              {bulletinLabel.slice(0, 2)}
                             </span>
                           )}
                         </td>

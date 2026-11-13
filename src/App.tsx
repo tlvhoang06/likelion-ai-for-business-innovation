@@ -36,6 +36,7 @@ import {
 const DEMO_TOUR_COMMUNE_GID = 'VNM.3.4.26_1';
 const DEFAULT_LAYERS: LayerToggles = {
   r1: true,
+  r2: true,
   r3: true,
   useR64: false,
   unosat: false,
@@ -150,20 +151,23 @@ export default function App() {
       setPendingDeferral(null);
       setSelectedGid(null);
       setActiveTab('bank');
-      setLayers({ r1: false, r3: false, useR64: false, unosat: false, s1: false });
+      setLayers({ r1: false, r2: false, r3: false, useR64: false, unosat: false, s1: false });
       timers.push(
         window.setTimeout(() => {
           setLayers((prev) => ({ ...prev, r1: true }));
-        }, 450),
+        }, 400),
+        window.setTimeout(() => {
+          setLayers((prev) => ({ ...prev, r2: true }));
+        }, 1150),
         window.setTimeout(() => {
           setLayers((prev) => ({ ...prev, r3: true }));
-        }, 1350),
+        }, 1900),
         window.setTimeout(() => {
           setLayers((prev) => ({ ...prev, unosat: true }));
-        }, 2250),
+        }, 2650),
         window.setTimeout(() => {
           setLayers((prev) => ({ ...prev, s1: true }));
-        }, 3150)
+        }, 3400)
       );
     } else if (step.id === 'drill') {
       setAuditOpen(false);
@@ -253,7 +257,10 @@ export default function App() {
   const stats = useMemo(() => {
     let triggeredCount = 0;
     let r1Count = 0;
+    let r2Count = 0;
     let r3Count = 0;
+    let priorityCount = 0;
+    let watchlistCount = 0;
     let triggeredLoans = 0;
     let triggeredDebtM = 0;
     let savedLoans = 0;
@@ -261,7 +268,10 @@ export default function App() {
     for (const c of communes) {
       const ev = evaluateCommuneAtDate(c, currentDay.date, layers);
       if (ev.r1On) r1Count += 1;
+      if (ev.r2On) r2Count += 1;
       if (ev.r3On) r3Count += 1;
+      if (ev.r1On || ev.r2On) priorityCount += 1;
+      else if (ev.r3On) watchlistCount += 1;
       if (ev.count > 0) {
         triggeredCount += 1;
         triggeredLoans += c.sim_loans;
@@ -275,7 +285,10 @@ export default function App() {
     return {
       triggeredCount,
       r1Count,
+      r2Count,
       r3Count,
+      priorityCount,
+      watchlistCount,
       triggeredLoans,
       triggeredDebtM,
       savedLoans,

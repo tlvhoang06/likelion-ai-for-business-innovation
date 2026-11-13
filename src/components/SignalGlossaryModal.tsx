@@ -30,53 +30,53 @@ const SIGNAL_ENTRIES: GlossaryEntry[] = [
     ruleVi: 'Ngưỡng > 200mm/24h (Đ.44 QĐ 18/2021) · 1.169 / 2.895 xã',
     ruleEn: 'Threshold > 200mm/24h (Art.44 Dec.18) · 1,169 / 2,895 communes',
     meaningVi:
-      'Tín hiệu kích hoạt sớm dựa trên lượng mưa tại xã. Tự động đưa xã vào diện đề xuất giãn nợ khi vượt ngưỡng.',
+      'Tín hiệu mưa cực đoan đưa xã vào Luồng Rà soát Ưu tiên (R1 | R2 = 1.338 xã), chuẩn bị hậu kiểm để phát đề xuất giãn nợ.',
     meaningEn:
-      'Early parametric rain trigger. Automatically flags communes crossing 200mm for fast deferral offers.',
+      'Extreme rainfall flag routing communes into Priority Review (R1 | R2 = 1,338 communes) for fast flood verification.',
     noteVi:
-      'Hạn chế: Một số xã mưa tại chỗ < 200mm vẫn ngập nặng do nước lũ thượng nguồn đổ về → được gom vào tab Ngoại lệ.',
+      'Hạn chế: Mưa tại chỗ < 200mm vẫn có thể ngập nặng do lũ sông dồn (R2 bắt thêm +169 xã; số còn lại qua tab Ngoại lệ).',
     noteEn:
-      'Gap: Communes below 200mm can still flood from upstream runoff — captured in the Exceptions queue.',
+      'Gap: Communes below 200mm can still flood from downstream runoff (R2 adds +169 communes; remainder surfaced via Exceptions).',
   },
   {
     code: 'R2',
-    color: SIGNAL_COLORS.r2Alert,
-    titleVi: 'R2 · Mực nước trạm thủy văn (BĐ3)',
-    titleEn: 'R2 · River Station Stage (AL3)',
-    ruleVi: '11 trạm thủy văn Bắc Bộ (QĐ 05/2020) · 10/11 đỉnh vượt Báo động 3',
-    ruleEn: '11 Northern NCHMF gauges (Dec.05) · 10/11 peaks above Alert Level 3',
+    color: SIGNAL_COLORS.r2,
+    titleVi: 'R2 · Lũ sông vượt BĐ3 (đã nối xã)',
+    titleEn: 'R2 · River Flood >AL3 (Mapped)',
+    ruleVi: '215 xã >BĐ3 (Precision 61,62%) · 109 xã Hà Nội <BĐ3 · 0 ca ngã ba mơ hồ',
+    ruleEn: '215 communes >AL3 (61.62% Prec.) · 109 Ha Noi <AL3 · 0 unresolved confluences',
     meaningVi:
-      'Theo dõi đỉnh lũ sông Cầu, Thương, Lục Nam, Thái Bình, Hồng, Hoàng Long trong tab Mực nước.',
+      'Đã nối xong 2.895 xã GADM v4.1 với 11 trạm thủy văn trên 6 tuyến sông Bắc Bộ theo quy tắc HAND ≤ 10m và trạm gần nhất.',
     meaningEn:
-      'Tracks river flood peaks across major Northern basins inside the River Stages tab.',
+      'Mapped across all 2,895 communes from 11 NCHMF gauges on 6 Northern rivers using HAND ≤10m floodability and nearest-gauge rules.',
     noteVi:
-      'Giới hạn hiện tại: Dữ liệu R2 mới dừng ở 11 điểm trạm sông, chưa có bảng nối trực tiếp tới từng mã xã GID_3.',
+      'Yên Bái vượt BĐ3 khung 19:00–21:47 ngày 08/09 (bất biến trong độ nhạy); Phủ Lạng Thương 10/09 03:30; Đáp Cầu 10/09 15:30; Vụ Quang 11/09 03:30; Phả Lại 11/09 21:00.',
     noteEn:
-      'Current limit: Station-level context only — verified station-to-GID_3 commune crosswalks are not yet mapped.',
+      'Yen Bai crossed AL3 within [19:00–21:47] 08/09 (sensitivity-invariant); Phu Lang Thuong 10/09 03:30; Dap Cau 10/09 15:30; Vu Quang 11/09 03:30; Pha Lai 11/09 21:00.',
   },
   {
     code: 'R3',
     color: SIGNAL_COLORS.r3R50,
-    titleVi: 'R3 · Trường gió bão (R50 / R64)',
-    titleEn: 'R3 · Typhoon Wind Band (R50 / R64)',
-    ruleVi: 'R50: 2.622 xã · R64 (gió mạnh hơn): 1.879 xã',
-    ruleEn: 'R50: 2,622 communes · R64 (stronger sensitivity): 1,879 communes',
+    titleVi: 'R3 · Trường gió bão (Watchlist)',
+    titleEn: 'R3 · Typhoon Wind Band (Watchlist)',
+    ruleVi: 'R50: 2.622 xã (1.354 xã chỉ có gió R3 vào Watchlist) · R64: 1.879 xã',
+    ruleEn: 'R50: 2,622 communes (1,354 R3-only in Watchlist) · R64: 1,879 communes',
     meaningVi:
-      'Hai kịch bản độ nhạy diện rộng theo vùng gió bão quét qua, có thể bật/tắt nhanh ngay trên thanh bản đồ.',
+      'Xã chỉ chạm R3 (chưa chạm R1/R2) được xếp vào Watchlist theo dõi vì gió bão diện rộng chưa đủ chứng minh ngập thực tế.',
     meaningEn:
-      'Two wind-band sensitivity presets toggleable directly in the map layer bar.',
+      'Communes with R3 wind alone (without R1/R2) enter Watchlist, since gale wind alone does not confirm flood loss without confirmation.',
   },
   {
-    code: 'R1+R3',
-    color: SIGNAL_COLORS.overlap,
-    titleVi: 'Tím · Khớp đồng thời 2 nguồn (R1 + R3)',
-    titleEn: 'Violet · Dual-Rule Match (R1 + R3)',
-    ruleVi: 'Cộng hưởng cả mưa cực đoan lẫn trường gió bão',
-    ruleEn: 'Triggered by both extreme rainfall and storm wind band',
+    code: 'R1+R2+R3',
+    color: SIGNAL_COLORS.overlap3,
+    titleVi: 'Hội tụ đa nguồn (2–3 quy tắc)',
+    titleEn: 'Multi-Rule Convergence (2–3 rules)',
+    ruleVi: '46 xã chạm cả 3 nguồn R1+R2+R3 (67,39% ngập UNOSAT) · 1.222 xã 2 nguồn',
+    ruleEn: '46 communes hit all 3 rules R1+R2+R3 (67.39% flooded) · 1,222 dual-rule',
     meaningVi:
-      'Nhóm xã có độ tin cậy tác động kép cao nhất tại mốc ngày đang chọn trên thanh thời gian.',
+      'Cảnh báo sớm gộp R1|R2|R3_R50 phủ 2.692/2.895 xã (27,35% Prec / 91,23% Rec). Riêng R1|R2 (1.338 xã) vào Luồng Rà soát Ưu tiên.',
     meaningEn:
-      'Highest-confidence parametric trigger overlap at the selected storm timeline date.',
+      'Combined early flag (2,692/2,895) achieves 27.35% Prec / 91.23% Rec vs UNOSAT; R1|R2 (1,338 communes) enters Priority Review.',
   },
   {
     code: 'UNOSAT',
@@ -221,12 +221,12 @@ export function SignalGlossaryModal({
 
               <div className="rounded-[5px] border border-lineStrong bg-canvas p-3">
                 <div className="font-mono text-[11px] font-semibold text-[#CDECD7]">
-                  {isEn ? 'Exceptions & UBND Sign-off' : 'Ca Ngoại lệ & UBND Xã'}
+                  {isEn ? 'Stage-2 Confirm → 1-Tap Offer' : 'Hậu kiểm Tầng 2 → Gửi 1-Chạm'}
                 </div>
                 <p className="mt-1 text-[12px] leading-relaxed text-inkMuted">
                   {isEn
-                    ? 'Flags flooded communes missed by R1 rain gauges or outside UNOSAT scan so officers verify via single commune attestation or counter paper.'
-                    : 'Gom các xã ngập bị đo mưa sót hoặc ngoài vùng quét vệ tinh để cán bộ rà soát, kết hợp xác nhận chung của UBND Xã hoặc kênh giấy.'}
+                    ? 'Post-event S1+R2+R1+HAND confirmation (63.46% Prec / 79.11% Rec) + UBND batch attestation gate 1-Tap offers—never confused with early-alert accuracy.'
+                    : 'Chỉ sau hậu kiểm Sentinel-1 (63,46% Prec / 79,11% Rec) hoặc UBND xã xác nhận, ngân hàng mới phát đề xuất giãn nợ 1-Chạm (không đánh tráo độ chính xác cảnh báo sớm).'}
                 </p>
               </div>
             </div>

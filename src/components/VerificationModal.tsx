@@ -51,62 +51,85 @@ export function VerificationModal({ lang, open, onClose, communes }: Verificatio
           <div>
             <h3 className="mb-2 text-[13px] font-semibold text-ink">
               {lang === 'en'
-                ? '1. Parametric Triggers (R1, R3) vs. UNOSAT 3966 Ground Truth'
-                : '1. Đối chiếu tín hiệu kích hoạt (R1, R3) với đáp án ngập UNOSAT 3966'}
+                ? '1. Two-Stage Empirical Benchmark vs. UNOSAT 3966 (2,540 classifiable; 355 out-of-scan preserved)'
+                : '1. Kiểm chứng thực nghiệm 2 tầng đối chiếu UNOSAT 3966 (2.540 xã chấm được; giữ 355 xã ngoài quét)'}
             </h3>
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               <div className="rounded-[3px] border border-line bg-canvas p-2.5">
                 <div className="text-[11px] text-inkDim">
-                  {lang === 'en' ? 'UNOSAT Benchmark' : 'Xã chấm được (UNOSAT)'}
+                  {lang === 'en' ? 'UNOSAT Benchmark' : 'Đáp án UNOSAT 3966'}
                 </div>
-                <div className="mt-1 font-mono text-[16px] font-semibold text-ink">
+                <div className="mt-1 font-mono text-[15px] font-semibold text-ink">
                   {formatNum(m.classifiableCount, lang)} / {formatNum(m.total, lang)}
                 </div>
                 <div className="text-[11px] text-inkMuted">
-                  {formatNum(m.outsideUnosat, lang)}{' '}
-                  {lang === 'en' ? 'outside delta scan' : 'xã ngoài ĐBSH'}
+                  {formatNum(m.floodedCount, lang)} {lang === 'en' ? 'flooded ≥5%' : 'ngập ≥5%'} · {formatNum(m.outsideUnosat, lang)} {lang === 'en' ? 'Unknown' : 'chưa biết'}
                 </div>
               </div>
               <div className="rounded-[5px] border border-white/[0.07] bg-canvas p-2.5">
                 <div className="text-[11px] text-inkDim">
-                  {lang === 'en' ? 'Flooded Communes (≥5%)' : 'Xã ngập thực tế (≥5%)'}
+                  {lang === 'en' ? 'Stage 1 · Early Alert (R1|R2|R3 R50)' : 'Tầng 1 · Cảnh báo sớm (R1|R2|R3)'}
                 </div>
-                <div className="mt-1 font-mono text-[16px] font-semibold text-ink">
-                  {formatNum(m.floodedCount, lang)}
+                <div className="mt-1 font-mono text-[15px] font-semibold text-[#8ACBB5]">
+                  {formatPct(m.r50AllRecall, lang, 2)} Rec · {formatPct(m.r50AllPrecision, lang, 2)} Prec
                 </div>
                 <div className="text-[11px] text-inkMuted">
-                  {formatNum(m.dryCount, lang)} {lang === 'en' ? 'below 5%' : 'xã dưới 5%'}
+                  {formatNum(m.r50AllTotal, lang)}/2.895 · {formatNum(m.r50AllTp, lang)} TP, {formatNum(m.r50AllFp, lang)} FP, {formatNum(m.r50AllFn, lang)} FN
+                </div>
+              </div>
+              <div className="rounded-[5px] border border-[#98c127]/40 bg-canvas p-2.5">
+                <div className="text-[11px] text-[#98c127]">
+                  {lang === 'en' ? 'Stage 2 · Post-Event S1 Confirmation' : 'Tầng 2 · Hậu kiểm Sentinel-1 (CV)'}
+                </div>
+                <div className="mt-1 font-mono text-[15px] font-semibold text-[#CDECD7]">
+                  {lang === 'en' ? '79.11% Rec · 63.46% Prec' : '79,11% Rec · 63,46% Prec'}
+                </div>
+                <div className="text-[11px] text-inkMuted">
+                  {lang === 'en'
+                    ? 'Retrospective S1+R2+R1+HAND CV (gates 1-Tap offer)'
+                    : 'Hậu kiểm 4-fold S1+R2+R1+HAND (trước 1-Chạm)'}
                 </div>
               </div>
               <div className="rounded-[5px] border border-white/[0.07] bg-canvas p-2.5">
                 <div className="text-[11px] text-inkDim">
-                  {lang === 'en' ? 'Wind R3 Recall (R50)' : 'Recall gió R3 (R50)'}
+                  {lang === 'en' ? 'Priority Track · R1 | R2' : 'Luồng Ưu tiên · R1 | R2'}
                 </div>
-                <div className="mt-1 font-mono text-[16px] font-semibold text-ink">
-                  {formatPct(m.r3R50Recall, lang, 1)}
+                <div className="mt-1 font-mono text-[15px] font-semibold text-ink">
+                  {formatNum(m.r1OrR2Total, lang)} {lang === 'en' ? 'communes' : 'xã'}
                 </div>
                 <div className="text-[11px] text-inkMuted">
-                  {formatNum(m.r3R50Tp, lang)}/{formatNum(m.floodedCount, lang)}{' '}
-                  {lang === 'en' ? 'communes' : 'xã'} · Prec {formatPct(m.r3R50Precision, lang, 1)}
+                  {formatPct(m.r1OrR2Recall, lang, 2)} Rec · {formatPct(m.r1OrR2Precision, lang, 2)} Prec ({formatNum(m.threeRuleTotal, lang)} 3-rule: {formatPct(m.threeRuleFloodPct, lang, 2)})
                 </div>
               </div>
               <div className="rounded-[5px] border border-white/[0.07] bg-canvas p-2.5">
                 <div className="text-[11px] text-inkDim">
-                  {lang === 'en' ? 'Rain R1 Recall (Art.44)' : 'Recall mưa R1 (Đ.44)'}
+                  {lang === 'en' ? 'R2 River Stage (>BĐ3 Mapped)' : 'Lũ sông R2 (>BĐ3 đã nối xã)'}
                 </div>
-                <div className="mt-1 font-mono text-[16px] font-semibold text-ink">
-                  {formatPct(m.r1Recall, lang, 1)}
+                <div className="mt-1 font-mono text-[15px] font-semibold text-[#8fd7d7]">
+                  {formatNum(m.r2Total, lang)} {lang === 'en' ? 'communes' : 'xã'}
                 </div>
                 <div className="text-[11px] text-inkMuted">
-                  {formatNum(m.r1Tp, lang)}/{formatNum(m.floodedCount, lang)}{' '}
-                  {lang === 'en' ? 'communes' : 'xã'} · Prec {formatPct(m.r1Precision, lang, 1)}
+                  {formatPct(m.r2Precision, lang, 2)} Prec ({formatNum(m.r2Tp, lang)} TP) · {formatNum(m.r2Total ? 109 : 0, lang)} {lang === 'en' ? 'HN <AL3' : 'HN <BĐ3'}
+                </div>
+              </div>
+              <div className="rounded-[5px] border border-white/[0.07] bg-canvas p-2.5">
+                <div className="text-[11px] text-inkDim">
+                  {lang === 'en' ? 'Watchlist Track · R3 R50 only' : 'Luồng Theo dõi · Chỉ gió R3'}
+                </div>
+                <div className="mt-1 font-mono text-[15px] font-semibold text-[#ff8ca1]">
+                  {formatNum(m.r3OnlyWatchlistTotal, lang)} {lang === 'en' ? 'communes' : 'xã'}
+                </div>
+                <div className="text-[11px] text-inkMuted">
+                  {lang === 'en'
+                    ? 'Wind alone needs flood confirmation'
+                    : 'Gió mạnh cần hậu kiểm trước 1-Chạm'}
                 </div>
               </div>
             </div>
             <p className="mt-2.5 text-[12px] text-inkMuted">
               {lang === 'en'
-                ? 'Note: rain rule R1 alone catches 33.8% of flooded communes and misses downstream floods below 200mm (e.g. Gia Thuy, 76.1% flooded), which AI & Exception Review surface.'
-                : 'Lưu ý thực nghiệm: đo mưa R1 đơn lẻ đạt độ phủ 33,8%, dễ sót xã ngập lũ dồn dù mưa <200mm (như Gia Thủy ngập 76,1%) — được bù bởi AI lọc ngoại lệ.'}
+                ? 'Methodological separation: Stage 1 early triggers (R1|R2|R3_R50: 27.35% Prec / 91.23% Rec, -1.50h median lag invariant over Yen Bai [19:00–21:47] 08/09) put R1|R2 in Priority Review and R3-only in Watchlist. Stage 2 post-event Sentinel-1 CV (63.46% Prec / 79.11% Rec, 568 TP / 327 FP / 150 FN / 1,495 TN; 61.93%/81.34% at 88% target) is a post-event confirmation gate — NEVER early-alert accuracy.'
+                : 'Tách bạch 2 tầng: Tầng 1 cảnh báo sớm (R1|R2|R3_R50: Precision 27,35% / Recall 91,23%, trung vị -1,50h bất biến quanh khung Yên Bái 19:00–21:47 08/09) xếp 1.338 xã R1|R2 vào Rà soát Ưu tiên và 1.354 xã chỉ gió R3 vào Watchlist. Tầng 2 hậu kiểm Sentinel-1+R2+R1+HAND (63,46% Prec / 79,11% Rec; 568 TP / 327 FP / 150 FN / 1.495 TN) dùng để xác nhận thiệt hại trước khi gửi 1-Chạm — KHÔNG phải độ chính xác cảnh báo sớm.'}
             </p>
           </div>
 
@@ -184,8 +207,8 @@ export function VerificationModal({ lang, open, onClose, communes }: Verificatio
                     <td className="px-3 py-2 font-mono text-ink">QĐ 05/2020/QĐ-TTg</td>
                     <td className="px-3 py-2">
                       {lang === 'en'
-                        ? 'Flood Alarm Level 3 across 11 NCHMF hydrology stations (10 above AL3; Hanoi gauge 11.30m was 0.20m below AL3). Kept at station level until gauge-to-GID_3 crosswalk exists.'
-                        : 'Mốc báo động lũ cấp 3 (BĐ3) tại 11 trạm thủy văn Bắc Bộ (10 trạm vượt BĐ3, trạm Hà Nội 11,30m dưới BĐ3 0,20m). Giữ R2 ở cấp trạm cho đến khi có crosswalk trạm–GID_3 xã.'}
+                        ? 'Flood Alarm Level 3 across 11 NCHMF stations mapped to 2,895 communes (6 Northern river basins, HAND ≤10m confluence tie-break): 215 communes triggered across 5 AL3 gauges (61.62% Precision), 109 Ha Noi communes mapped below AL3 (11.30m < 11.50m), 0 unresolved confluences; Yen Bai bounded [19:00–21:47] 08/09.'
+                        : 'Mốc BĐ3 tại 11 trạm thủy văn đã nối hoàn chỉnh 2.895 xã (6 tuyến sông Bắc Bộ, quy tắc HAND ≤10m ngã ba sông): 215 xã >BĐ3 thuộc 5 trạm (Precision 61,62%), 109 xã vùng trạm Hà Nội <BĐ3 (11,30m < 11,50m), 0 ca mơ hồ; Yên Bái giới hạn khung 19:00–21:47 ngày 08/09.'}
                     </td>
                   </tr>
                   <tr>

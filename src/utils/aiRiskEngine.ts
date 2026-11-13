@@ -55,6 +55,7 @@ export interface AiWorkspaceAction {
   dateStr?: string;
   layers?: Partial<{
     r1: boolean;
+    r2: boolean;
     r3: boolean;
     useR64: boolean;
     unosat: boolean;
@@ -234,7 +235,7 @@ export function assessCommuneAiRisk(
     score >= 75 ? 'CRITICAL' : score >= 50 ? 'HIGH' : score >= 25 ? 'WATCH' : 'LOW';
 
   const isBasisRiskMiss =
-    !c.r1 && (c.unosat_label === 1 || c.s1_label === 1);
+    !c.r1 && c.r2 !== 1 && (c.unosat_label === 1 || c.s1_label === 1);
   const isBlindSpotCandidate =
     c.unosat_status !== 'CLASSIFIABLE' &&
     ((c.s1_flood_pct ?? 0) >= 1.5 || c.rain_mm >= 120 || c.r3_r64);
@@ -554,7 +555,7 @@ function buildBatchPlanMemo(plan: BranchTriagePlan, lang: Lang): string {
       '',
       '**To:** Branch Director / Credit Restructuring Committee',
       `**Capacity Assumption:** ${plan.officers} officers × ${plan.hoursWindow}h (${plan.casesPerOfficerDay} communes/officer/day = max ${plan.maxCommunes} communes)`,
-      `**Selected Scope:** ${plan.selectedCount} communes across ${plan.clusters.length} districts (${plan.outsideUnosatCount} outside UNOSAT scan, ${plan.basisRiskMissCount} missed by R1 <200mm)`,
+      `**Selected Scope:** ${plan.selectedCount} communes across ${plan.clusters.length} districts (${plan.outsideUnosatCount} outside UNOSAT scan, ${plan.basisRiskMissCount} missed by R1|R2)`,
       '',
       '**1. Simulated Portfolio Protection**',
       `- Protected Loans (Group 1): **${formatNum(plan.totalLoansProtected, 'en')} loans** · **${formatVndBillions(plan.totalDebtM, 'en')}**`,
@@ -576,7 +577,7 @@ function buildBatchPlanMemo(plan: BranchTriagePlan, lang: Lang): string {
     '',
     '**Kính gửi:** Giám đốc Chi nhánh / Hội đồng Cơ cấu nợ',
     `**Giả định nguồn lực:** ${plan.officers} cán bộ × ${plan.hoursWindow} giờ (${plan.casesPerOfficerDay} xã/cán bộ/ngày = tối đa ${plan.maxCommunes} xã)`,
-    `**Phạm vi ưu tiên:** ${plan.selectedCount} xã tại ${plan.clusters.length} cụm huyện (${plan.outsideUnosatCount} xã ngoài vùng chụp UNOSAT, ${plan.basisRiskMissCount} xã mưa <200mm nhưng có tín hiệu vệ tinh)`,
+    `**Phạm vi ưu tiên:** ${plan.selectedCount} xã tại ${plan.clusters.length} cụm huyện (${plan.outsideUnosatCount} xã ngoài vùng chụp UNOSAT, ${plan.basisRiskMissCount} xã lọt R1|R2 nhưng có tín hiệu vệ tinh)`,
     '',
     '**1. Quy mô danh mục bảo vệ (ước tính)**',
     `- Tổng hộ giữ Nhóm nợ 1: **${formatNum(plan.totalLoansProtected, 'vi')} khoản** · Dư nợ **${formatVndBillions(plan.totalDebtM, 'vi')}**`,
@@ -598,6 +599,7 @@ interface QueryCommunesArgs {
   basis_risk_miss_only?: boolean;
   min_rain_mm?: number;
   min_flood_pct?: number;
+  require_r2?: boolean;
   require_r3_r50?: boolean;
   require_r3_r64?: boolean;
   min_ai_score?: number;
@@ -626,6 +628,7 @@ function executeQueryCommunesTool(
     ) {
       continue;
     }
+    if (args.require_r2 && c.r2 !== 1) continue;
     if (args.require_r3_r50 && !c.r3_r50) continue;
     if (args.require_r3_r64 && !c.r3_r64) continue;
     if (typeof args.min_ai_score === 'number' && ai.score < args.min_ai_score) continue;
@@ -680,6 +683,8 @@ function executeQueryCommunesTool(
       province: c.province,
       rain_mm: c.rain_mm,
       r1_triggered: c.r1,
+      r2_triggered: c.r2 === 1,
+      r2_station: c.r2_station ?? null,
       r3_r50: c.r3_r50,
       r3_r64: c.r3_r64,
       unosat_status: c.unosat_status,
@@ -735,6 +740,7 @@ function executePlanBranchTriageTool(
       c.unosat_label === 1 ||
       c.s1_label === 1 ||
       c.r1 ||
+      c.r2 === 1 ||
       c.r3_r64 ||
       ai.score >= 50;
     if (isEligible) {
@@ -826,8 +832,8 @@ function executeGetRiverStationsTool(stations: RiverStationR2[], dateStr: string
     observed_date: dateStr,
     total_stations: stations.length,
     active_exceeded_bd3_at_date: active.filter((s) => s.peak_m >= s.bd3_m).length,
-    crosswalk_limitation:
-      'River gauges lack verified station-to-GID_3 commune crosswalks in current hydrological data; treat as basin context only.',
+    crosswalk_status:
+      'RESOLVED_6_NORTHERN_BASINS_2895_COMMUNES_215_R2_TRIGGERED_109_HANOI_LT_BD3_0_UNRESOLVED_CONFLUENCES',
     stations: stations.map((s) => ({
       station: s.station,
       river: s.river,
@@ -836,7 +842,10 @@ function executeGetRiverStationsTool(stations: RiverStationR2[], dateStr: string
       bd3_m: s.bd3_m,
       exceeded_bd3: s.peak_m >= s.bd3_m,
       warning_level: s.warning_level,
+      first_bd3_bulletin_ict: s.first_bd3_bulletin_ict ?? null,
+      bulletin_evidence_status: s.bulletin_evidence_status ?? null,
       peak_time_ict: s.peak_time_ict,
+      mapped_communes: s.mapped_communes ?? 0,
     })),
   };
 }
@@ -862,6 +871,7 @@ interface DispatchUiArgs {
   highlight_gids?: string[];
   set_date?: string;
   enable_r1?: boolean;
+  enable_r2?: boolean;
   enable_r3?: boolean;
   use_r64?: boolean;
   enable_unosat?: boolean;
@@ -925,6 +935,7 @@ function applyDispatchUiActionArgs(
 
   const layerPatch: AiWorkspaceAction['layers'] = {};
   if (typeof args.enable_r1 === 'boolean') layerPatch.r1 = args.enable_r1;
+  if (typeof args.enable_r2 === 'boolean') layerPatch.r2 = args.enable_r2;
   if (typeof args.enable_r3 === 'boolean') layerPatch.r3 = args.enable_r3;
   if (typeof args.use_r64 === 'boolean') {
     layerPatch.useR64 = args.use_r64;
@@ -1331,8 +1342,8 @@ function answerLocallyGrounded(
     ],
     answer:
       lang === 'en'
-        ? `Across **2,895 communes** on **${dateStr}**, ${activeStationsCount}/11 river gauges exceeded Alert Level 3. Rain rule alone covers **${formatPct(whatIf.baselineRecallPct, 'en')}** of UNOSAT flooded communes; adding AI scoring (≥${whatIf.threshold}) lifts flood coverage to **${formatPct(whatIf.aiRecallPct, 'en')}**, protecting **+${formatNum(whatIf.extraLoansRescued, 'en')} extra loans** (${formatVndBillions(whatIf.extraProvisionAvoidedM, 'en')} 5% provision avoided).\n\nHighest-priority missed commune: **${topQ?.commune.name} (${topQ?.commune.province})** — score **${topQ?.ai.score}/100**.`
-        : `Trên **2.895 xã** tại ngày **${dateStr.split('-').reverse().join('/')}**, có **${activeStationsCount}/11 trạm sông** vượt Báo động 3. Chỉ đo mưa phủ được **${formatPct(whatIf.baselineRecallPct, 'vi')}** xã ngập UNOSAT; dùng thêm chấm điểm AI (từ **${whatIf.threshold}** điểm) giúp nâng lên **${formatPct(whatIf.aiRecallPct, 'vi')}**, giữ thêm **+${formatNum(whatIf.extraLoansRescued, 'vi')} hộ vay** ở Nhóm 1 (${formatVndBillions(whatIf.extraProvisionAvoidedM, 'vi')} dự phòng 5%).\n\nXã ngập bị đo mưa sót cần ưu tiên nhất: **${topQ?.commune.name} (${topQ?.commune.province})** — **${topQ?.ai.score}/100 điểm**.`,
+        ? `Across **2,895 communes** on **${dateStr}**, ${activeStationsCount}/11 river gauges reached >AL3 (215 R2 communes resolved; Stage-1 Early Alert reaches **91.23%** UNOSAT recall via **1,338 Priority R1|R2** + **1,354 R3 Watchlist**, while Stage-2 S1 CV confirms **63.46% Prec / 79.11% Rec**). Rain alone covers **${formatPct(whatIf.baselineRecallPct, 'en')}**; adding AI scoring (≥${whatIf.threshold}) lifts coverage to **${formatPct(whatIf.aiRecallPct, 'en')}**, protecting **+${formatNum(whatIf.extraLoansRescued, 'en')} extra loans** (${formatVndBillions(whatIf.extraProvisionAvoidedM, 'en')} 5% provision avoided).\n\nHighest-priority missed commune: **${topQ?.commune.name} (${topQ?.commune.province})** — score **${topQ?.ai.score}/100**.`
+        : `Trên **2.895 xã** tại ngày **${dateStr.split('-').reverse().join('/')}**, có **${activeStationsCount}/11 trạm sông** vượt BĐ3 (đã nối 215 xã R2; Tầng 1 Cảnh báo sớm đạt **91,23%** Recall UNOSAT gồm **1.338 xã Ưu tiên R1|R2** + **1.354 xã Theo dõi R3**; Tầng 2 S1 CV xác nhận ngập **63,46% Prec / 79,11% Rec**). Chỉ đo mưa phủ **${formatPct(whatIf.baselineRecallPct, 'vi')}**; dùng thêm AI (≥**${whatIf.threshold}**đ) nâng lên **${formatPct(whatIf.aiRecallPct, 'vi')}**, giữ thêm **+${formatNum(whatIf.extraLoansRescued, 'vi')} hộ vay** Nhóm 1 (${formatVndBillions(whatIf.extraProvisionAvoidedM, 'vi')} dự phòng 5%).\n\nXã ngoài R1|R2 cần ưu tiên nhất: **${topQ?.commune.name} (${topQ?.commune.province})** — **${topQ?.ai.score}/100 điểm**.`,
   };
 }
 
@@ -1383,7 +1394,7 @@ const GEMINI_TOOL_DECLARATIONS = [
   {
     name: 'query_communes',
     description:
-      'Filter, rank, and aggregate exact statistics across all 2,895 northern communes using verified Yagi telemetry (rain R1, wind R3 R50/R64, UNOSAT 3966, Sentinel-1, simulated loans & 5% NĐ 86 provision). Missing UNOSAT coverage is kept as unknown, never zero.',
+      'Filter, rank, and aggregate exact statistics across all 2,895 northern communes using verified Yagi telemetry (rain R1, river R2, wind R3 R50/R64, UNOSAT 3966, Sentinel-1, simulated loans & 5% NĐ 86 provision). Missing UNOSAT coverage is kept as unknown, never zero.',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -1397,10 +1408,11 @@ const GEMINI_TOOL_DECLARATIONS = [
         },
         basis_risk_miss_only: {
           type: 'BOOLEAN',
-          description: 'If true, only include flooded communes where local rain gauge stayed <200mm (missed by R1).',
+          description: 'If true, only include flooded communes missed by meteorological R1 rain & R2 river gauges.',
         },
         min_rain_mm: { type: 'NUMBER', description: 'Minimum 24h peak rainfall in mm.' },
         min_flood_pct: { type: 'NUMBER', description: 'Minimum UNOSAT flooded percentage (0..100).' },
+        require_r2: { type: 'BOOLEAN', description: 'Filter to resolved R2 river >AL3 communes (215 communes).' },
         require_r3_r50: { type: 'BOOLEAN', description: 'Filter to R3 R50 gale wind band.' },
         require_r3_r64: { type: 'BOOLEAN', description: 'Filter to severe R3 R64 wind band.' },
         min_ai_score: { type: 'NUMBER', description: 'Minimum composite priority score (0..100).' },
@@ -1497,6 +1509,7 @@ const GEMINI_TOOL_DECLARATIONS = [
           description: 'Timeline date YYYY-MM-DD (between 2024-09-05 and 2024-09-14).',
         },
         enable_r1: { type: 'BOOLEAN' },
+        enable_r2: { type: 'BOOLEAN' },
         enable_r3: { type: 'BOOLEAN' },
         use_r64: { type: 'BOOLEAN' },
         enable_unosat: { type: 'BOOLEAN' },
@@ -1771,6 +1784,10 @@ export async function runHybridCopilotQuery(
             district: ctx.selectedCommune.district,
             rain_mm: ctx.selectedCommune.rain_mm,
             r1: ctx.selectedCommune.r1,
+            r2: ctx.selectedCommune.r2 === 1,
+            r2_station: ctx.selectedCommune.r2_station ?? null,
+            r2_first_bulletin_ict: ctx.selectedCommune.r2_first_bulletin_ict ?? null,
+            r2_distance_km: ctx.selectedCommune.r2_distance_km ?? null,
             r3_r50: ctx.selectedCommune.r3_r50,
             r3_r64: ctx.selectedCommune.r3_r64,
             unosat_status: ctx.selectedCommune.unosat_status,
