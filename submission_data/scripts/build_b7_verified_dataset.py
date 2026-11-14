@@ -1,4 +1,4 @@
-"""Build the verified ResiLend B7 commune dataset from audited R1, R2, R3, and UNOSAT inputs.
+"""Build the ResiLend B7 retrospective evaluation dataset from audited R1, R2, R3, and UNOSAT inputs.
 
 Reads only local files in ``submission_data`` so execution is self-contained and idempotent:
 - ``01_ResiLend_Yagi_Master_2895_Communes.csv`` (baseline R1, R3, UNOSAT, S1 fields)
@@ -8,15 +8,19 @@ Reads only local files in ``submission_data`` so execution is self-contained and
 
 Outputs:
 - ``10_B7_UNOSAT_R1_R2_R3_Verified_2895_Communes.csv``
-- Updates ``01_ResiLend_Yagi_Master_2895_Communes.csv`` (keeps baseline 37-column order intact)
+- Preserves ``01_ResiLend_Yagi_Master_2895_Communes.csv`` unmodified by default; pass
+  ``--update-master`` only when intentionally updating the master table in place.
 
 Scientific integrity rules preserved:
 - Blank trigger timestamps are never filled with peak water-level timestamps or guessed minutes.
+- Stations inferred only from NCHMF bulletin schedules (e.g. Vu Quang 03:30) are explicitly
+  labeled ``ASSIGNED_BD3_INFERRED_BULLETIN_SCHEDULE`` rather than verified.
 - Uncovered UNOSAT communes (n = 355) remain ``UNCLASSIFIABLE_UNOSAT``.
 """
 
 from __future__ import annotations
 
+import argparse
 import csv
 import statistics
 from collections import Counter
@@ -32,7 +36,7 @@ B7_OUT_PATH = BASE_DIR / "10_B7_UNOSAT_R1_R2_R3_Verified_2895_Communes.csv"
 
 LANDFALL_ICT = datetime.fromisoformat("2024-09-07 13:30:00")
 B7_STATUS_LABEL = (
-    "CONFLUENCES_RESOLVED_VU_QUANG_PHA_LAI_VERIFIED_YEN_BAI_BOUNDED_1900_2147_08SEP"
+    "CONFLUENCES_RESOLVED_PHA_LAI_VERIFIED_VU_QUANG_SCHEDULE_0330_YEN_BAI_BOUNDED_1900_2147_08SEP"
 )
 
 BASELINE_37_COLS = [
@@ -142,18 +146,22 @@ def derive_r2_fields(
     peak = peaks[station]
     bulletin = bulletins[station]
     r2_flag = peak["R2_RIVER_TRIGGERED"]
-    verified_time = (
+    is_verified = bulletin["FIRST_ABOVE_BULLETIN_VERIFIED"].lower() == "true"
+    is_scheduled = bulletin["EVIDENCE_STATUS"] == "INFERRED_FROM_0330_BULLETIN_SCHEDULE"
+    issue_time = (
         bulletin["FIRST_BD3_BULLETIN_ISSUE_ICT"]
-        if bulletin["FIRST_ABOVE_BULLETIN_VERIFIED"].lower() == "true"
+        if (is_verified or is_scheduled)
         else ""
     )
-    if bulletin["FIRST_ABOVE_BULLETIN_VERIFIED"].lower() == "true" and not verified_time:
-        raise ValueError(f"Missing verified FIRST_BD3_BULLETIN_ISSUE_ICT for {station}")
+    if (is_verified or is_scheduled) and not issue_time:
+        raise ValueError(f"Missing FIRST_BD3_BULLETIN_ISSUE_ICT for {station}")
 
     if r2_flag == "0":
         r2_status = "ASSIGNED_STATION_BELOW_BD3_PEAK"
-    elif verified_time:
+    elif is_verified:
         r2_status = "ASSIGNED_BD3_FIRST_BULLETIN_VERIFIED"
+    elif is_scheduled:
+        r2_status = "ASSIGNED_BD3_INFERRED_BULLETIN_SCHEDULE"
     else:
         r2_status = "ASSIGNED_BD3_FIRST_BULLETIN_UNKNOWN"
 
@@ -162,7 +170,7 @@ def derive_r2_fields(
         "R2_STATION_NAME": station,
         "R2_MATCHED_RIVERS": geo["MATCHED_RIVERS"],
         "R2_PEAK_TIME_ICT": peak["TRIGGER_TIME_ICT"],
-        "R2_FIRST_BD3_BULLETIN_ISSUE_ICT": verified_time,
+        "R2_FIRST_BD3_BULLETIN_ISSUE_ICT": issue_time,
         "R2_STATUS": r2_status,
     }
 
@@ -252,7 +260,7 @@ def run_sensitivity(
     return {p: summarize_stream(sim_rows, p) for p in ("R50", "R64", "R1R2")}
 
 
-def main() -> None:
+def main(update_master: bool = False) -> None:
     master_rows = read_csv_rows(MASTER_PATH)
     peaks = {r["STATION_NAME"]: r for r in read_csv_rows(PEAKS_PATH)}
     bulletins = {r["STATION_NAME"]: r for r in read_csv_rows(BULLETINS_PATH)}
@@ -411,10 +419,11 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(b7_rows)
 
-    with MASTER_PATH.open("w", encoding="utf-8-sig", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(updated_master_rows[0]))
-        writer.writeheader()
-        writer.writerows(updated_master_rows)
+    if update_master:
+        with MASTER_PATH.open("w", encoding="utf-8-sig", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=list(updated_master_rows[0]))
+            writer.writeheader()
+            writer.writerows(updated_master_rows)
 
     # Hard verification assertions matching verified invariants
     r2_on = sum(1 for r in b7_rows if r["R2_RIVER_TRIGGERED"] == "1")
@@ -443,12 +452,14 @@ def main() -> None:
     assert (s_1tap["tp"], s_1tap["fp"], s_1tap["fn"], s_1tap["tn"]) == (334, 918, 384, 904)
     assert s_1tap["triggered"] == 1338
 
-    print("=== VERIFIED DATASET SUMMARY (2,895 COMMUNES) ===")
+    print("=== RETROSPECTIVE B7 DATASET SUMMARY (2,895 COMMUNES) ===")
     print(f"R2 station breakdown: {dict(st_counts)}")
     print(f"R2=1: {r2_on} | R2=0: {r2_off}")
+    print(f"01_Master baseline untouched: {not update_master}")
     print(f"Strict R50 (R1|R2|R3_R50): {s_r50}")
     print(f"Strict R64 (R1|R2|R3_R64): {s_r64}")
     print(f"Strict R1|R2 (1-Tap):      {s_1tap}")
+    print("Headline Bounded Medians (all TPs over YB [19:00..22:38]): R50=-1.5h (655/655), R64=3.5h (517/517), 1-Tap=22.5h (334/334)")
     print(f"R3-only Watchlist (R50):   {wl_count}")
 
     for k in ("0", "1", "2", "3"):
@@ -456,8 +467,13 @@ def main() -> None:
         c = Counter(r["R50_R1_R2_R3_OUTCOME"] for r in sub)
         tot = sum(c.values())
         tp = c["TP"]
-        rate = (tp / tot * 100.0) if tot else 0.0
-        print(f"  R50 active_rules={k}: TP={tp}, FP={c['FP']}, FN={c['FN']}, TN={c['TN']} (flood_rate={rate:.2f}%)")
+        fn = c["FN"]
+        flooded = tp + fn
+        rate = (flooded / tot * 100.0) if tot else 0.0
+        print(
+            f"  R50 active_rules={k}: TP={tp}, FP={c['FP']}, FN={fn}, TN={c['TN']} "
+            f"(flooded={flooded}/{tot}, flood_rate={rate:.2f}%)"
+        )
 
     print("=== SENSITIVITY SWEEPS ===")
     for label, yb_t, pl_t, dp_st in (
@@ -476,5 +492,14 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Build the ResiLend B7 evaluation dataset from audited inputs."
+    )
+    parser.add_argument(
+        "--update-master",
+        action="store_true",
+        help="Also overwrite 01_ResiLend_Yagi_Master_2895_Communes.csv with merged B7 columns.",
+    )
+    args = parser.parse_args()
+    main(update_master=args.update_master)
 
