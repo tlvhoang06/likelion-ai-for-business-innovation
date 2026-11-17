@@ -237,17 +237,43 @@ export function AiCopilotPanel({
 
   return (
     <div className="space-y-3.5 text-[12.5px]">
-      {/* Compact Header & Optional Gemini Connection Bar */}
+      {/* Compact Header & Explicit Gemini Live vs Offline Fallback Status Bar */}
       <div className="rounded-[4px] border border-lineStrong bg-canvas px-3 py-2.5">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <div className="truncate font-semibold text-ink">
-              {lang === 'en' ? 'Gemini Tool Agent' : 'Trợ lý Điều phối Gemini'}
+            <div className="flex items-center gap-2 truncate font-semibold text-ink">
+              <span>{lang === 'en' ? 'AI Operations Copilot' : 'Trợ lý Điều phối AI'}</span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-[3px] border px-1.5 py-0.5 font-mono text-[9.5px] font-medium ${
+                  keyStatus === 'valid'
+                    ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300'
+                    : 'border-amber-500/40 bg-amber-950/25 text-amber-200'
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    keyStatus === 'valid' ? 'bg-emerald-400' : 'bg-amber-400'
+                  }`}
+                />
+                <span>
+                  {keyStatus === 'valid'
+                    ? lang === 'en'
+                      ? 'Gemini Live'
+                      : 'Gemini Live'
+                    : lang === 'en'
+                    ? 'Fallback: Local Tools'
+                    : 'Dự phòng: Công cụ Local'}
+                </span>
+              </span>
             </div>
             <div className="mt-0.5 truncate text-[11px] text-inkDim">
-              {lang === 'en'
-                ? 'Live map & schedule tools · Zero PII'
-                : 'Gọi công cụ bản đồ & xếp lịch · Không PII'}
+              {keyStatus === 'valid'
+                ? lang === 'en'
+                  ? 'Connected to Google Gemini · Zero-PII tools'
+                  : 'Đang nối Gemini · Chỉ gọi công cụ Không PII'
+                : lang === 'en'
+                ? 'Deterministic local tool mode (connect API key for live LLM)'
+                : 'Đang chạy công cụ local kiểm chứng (chưa gắn Gemini API Key)'}
             </div>
           </div>
           <button
@@ -513,13 +539,13 @@ export function AiCopilotPanel({
                       <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-line pb-1.5">
                         <span className="font-mono text-[10.5px] font-semibold tracking-wide text-[#8ACBB5]">
                           {lang === 'en'
-                            ? `DISPATCH PLAN · ${turn.response.actionPlan.officers} OFFICERS × ${turn.response.actionPlan.hoursWindow}H`
-                            : `LỊCH PHÂN TUYẾN · ${turn.response.actionPlan.officers} CÁN BỘ × ${turn.response.actionPlan.hoursWindow}H`}
+                            ? `TRIAGE CAPACITY PLAN · ${turn.response.actionPlan.officers} OFFICERS × ${turn.response.actionPlan.hoursWindow}H`
+                            : `KẾ HOẠCH RÀ SOÁT · ${turn.response.actionPlan.officers} CÁN BỘ × ${turn.response.actionPlan.hoursWindow}H`}
                         </span>
                         <span className="font-mono text-[10px] text-inkDim">
                           {lang === 'en'
-                            ? `Assumption: ${turn.response.actionPlan.casesPerOfficerDay} communes/officer/day`
-                            : `Giả định: ${turn.response.actionPlan.casesPerOfficerDay} xã/CB/ngày`}
+                            ? `Assumption: ${turn.response.actionPlan.casesPerOfficerDay} communes/officer/day (not route opt.)`
+                            : `Giả định: ${turn.response.actionPlan.casesPerOfficerDay} xã/CB/ngày (không tối ưu tuyến)`}
                         </span>
                       </div>
 

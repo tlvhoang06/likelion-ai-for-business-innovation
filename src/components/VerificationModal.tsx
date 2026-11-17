@@ -79,15 +79,15 @@ export function VerificationModal({ lang, open, onClose, communes }: Verificatio
               </div>
               <div className="rounded-[5px] border border-[#98c127]/40 bg-canvas p-2.5">
                 <div className="text-[11px] text-[#98c127]">
-                  {lang === 'en' ? 'Stage 2 · Post-Event ML Confirm' : 'Tầng 2 · Hậu kiểm ML Tầng 2 (CV)'}
+                  {lang === 'en' ? 'Stage 2 · Post-Event ML (13/11 CV)' : 'Tầng 2 · Hậu kiểm ML (CV 13/11)'}
                 </div>
                 <div className="mt-1 font-mono text-[15px] font-semibold text-[#CDECD7]">
                   {formatPct(m.s2MlRecall, lang, 2)} Rec · {formatPct(m.s2MlPrecision, lang, 2)} Prec
                 </div>
                 <div className="text-[11px] text-inkMuted">
                   {lang === 'en'
-                    ? `HistGradient CV (S1+HAND) · Watch ${m.watchlistFloodCaughtByMl}/321 · FN ${m.earlyFnRecoveredByMlCount}/63`
-                    : `HistGradient CV (S1+HAND) · Watch ${m.watchlistFloodCaughtByMl}/321 · Sót ${m.earlyFnRecoveredByMlCount}/63`}
+                    ? `13/11 snapshot · 215-R2 re-run: 63.38%/79.81% · Watch ${m.watchlistFloodCaughtByMl}/321 · FN ${m.earlyFnRecoveredByMlCount}/63`
+                    : `Bản CV 13/11 (chạy lại 215 R2: 63,38%/79,81%) · Watch ${m.watchlistFloodCaughtByMl}/321 · Sót ${m.earlyFnRecoveredByMlCount}/63`}
                 </div>
               </div>
               <div className="rounded-[5px] border border-white/[0.07] bg-canvas p-2.5">
@@ -103,7 +103,7 @@ export function VerificationModal({ lang, open, onClose, communes }: Verificatio
               </div>
               <div className="rounded-[5px] border border-white/[0.07] bg-canvas p-2.5">
                 <div className="text-[11px] text-inkDim">
-                  {lang === 'en' ? 'R2 River Stage (>BĐ3 Mapped)' : 'Lũ sông R2 (>BĐ3 đã nối xã)'}
+                  {lang === 'en' ? 'R2 River Stage (≥AL3 Mapped)' : 'Lũ sông R2 (≥BĐ3 đã nối xã)'}
                 </div>
                 <div className="mt-1 font-mono text-[15px] font-semibold text-[#8fd7d7]">
                   {formatNum(m.r2Total, lang)} {lang === 'en' ? 'communes' : 'xã'}
@@ -128,8 +128,8 @@ export function VerificationModal({ lang, open, onClose, communes }: Verificatio
             </div>
             <p className="mt-2.5 text-[12px] text-inkMuted">
               {lang === 'en'
-                ? 'Methodological separation: Stage 1 early triggers (R1|R2|R3_R50: 27.35% Prec / 91.23% Rec, -1.50h median lag invariant over Yen Bai [19:00–21:47] 08/09) put R1|R2 in Priority Review and R3-only in Watchlist. Stage 2 post-event Sentinel-1 CV (63.46% Prec / 79.11% Rec, 568 TP / 327 FP / 150 FN / 1,495 TN; 61.93%/81.34% at 88% target) is a post-event confirmation gate — NEVER early-alert accuracy.'
-                : 'Tách bạch 2 tầng: Tầng 1 cảnh báo sớm (R1|R2|R3_R50: Precision 27,35% / Recall 91,23%, trung vị -1,50h bất biến quanh khung Yên Bái 19:00–21:47 08/09) xếp 1.338 xã R1|R2 vào Rà soát Ưu tiên và 1.354 xã chỉ gió R3 vào Watchlist. Tầng 2 hậu kiểm Sentinel-1+R2+R1+HAND (63,46% Prec / 79,11% Rec; 568 TP / 327 FP / 150 FN / 1.495 TN) dùng để xác nhận thiệt hại trước khi gửi 1-Chạm — KHÔNG phải độ chính xác cảnh báo sớm.'}
+                ? 'Methodological separation (D01–D05): Stage-1 early triggers (R1|R2|R3_R50: 27.35% Prec / 91.23% Rec, -1.50h IBTrACS median lag; Priority R1|R2 +22.5h median post-landfall, 86% ≤72h) split Priority vs Watchlist. Stage-2 post-event Sentinel-1 CV (13/11 snapshot: 63.46% Prec / 79.11% Rec, 568 TP / 327 FP / 150 FN; re-run on finalized 215-R2 CSV yields 63.38% / 79.81%, 573/331/145) is retrospective post-event confirmation — <72h full workflow remains a pilot SLA target, and bank review decides approval.'
+                : 'Tách bạch 2 tầng (D01–D05): Tầng 1 cảnh báo sớm (R1|R2|R3_R50: 27,35% Prec / 91,23% Rec, trung vị -1,50h; riêng Ưu tiên R1|R2 đạt trung vị +22,5h sau đổ bộ, 86% ≤72h) chia luồng Ưu tiên & Watchlist. Tầng 2 hậu kiểm Sentinel-1+R2+R1+HAND (bản CV 13/11: 63,46% Prec / 79,11% Rec, 568 TP / 327 FP / 150 FN; chạy lại trên 215 xã R2 đạt 63,38% / 79,81%) chỉ là xác nhận hậu sự kiện mở đề nghị 1-Chạm — mốc <72h toàn chu trình là mục tiêu thí điểm và ngân hàng giữ quyền xét duyệt cuối cùng.'}
             </p>
           </div>
 
@@ -207,8 +207,8 @@ export function VerificationModal({ lang, open, onClose, communes }: Verificatio
                     <td className="px-3 py-2 font-mono text-ink">QĐ 05/2020/QĐ-TTg</td>
                     <td className="px-3 py-2">
                       {lang === 'en'
-                        ? 'Flood Alarm Level 3 across 11 NCHMF stations mapped to 2,895 communes (6 Northern river basins, HAND ≤10m confluence tie-break): 215 communes triggered across 5 AL3 gauges (61.62% Precision), 109 Ha Noi communes mapped below AL3 (11.30m < 11.50m), 0 unresolved confluences; Yen Bai bounded [19:00–21:47] 08/09.'
-                        : 'Mốc BĐ3 tại 11 trạm thủy văn đã nối hoàn chỉnh 2.895 xã (6 tuyến sông Bắc Bộ, quy tắc HAND ≤10m ngã ba sông): 215 xã >BĐ3 thuộc 5 trạm (Precision 61,62%), 109 xã vùng trạm Hà Nội <BĐ3 (11,30m < 11,50m), 0 ca mơ hồ; Yên Bái giới hạn khung 19:00–21:47 ngày 08/09.'}
+                        ? 'Flood Alarm Level 3 (≥AL3) across 11 NCHMF gauges mapped to 2,895 communes (6 basins, HAND ≤10m tie-break): 215 communes ≥AL3 across 5 gauges (61.62% Precision; all 5 exceeded strictly on Yagi so >AL3 = ≥AL3), 109 Ha Noi communes <AL3 (11.30m < 11.50m), 0 unresolved confluences; Yen Bai bounded [19:00–21:47] 08/09.'
+                        : 'Mốc ≥BĐ3 tại 11 trạm thủy văn đã nối hoàn chỉnh 2.895 xã (6 tuyến sông, HAND ≤10m ngã ba sông): 215 xã ≥BĐ3 thuộc 5 trạm (Precision 61,62%; trên Yagi không trạm nào bằng ngưỡng nên > và ≥ cho cùng 215 xã), 109 xã Hà Nội <BĐ3 (11,30m < 11,50m), 0 ca mơ hồ; Yên Bái khung 19:00–21:47 08/09.'}
                     </td>
                   </tr>
                   <tr>

@@ -41,18 +41,18 @@ const SIGNAL_ENTRIES: GlossaryEntry[] = [
   {
     code: 'R2',
     color: SIGNAL_COLORS.r2,
-    titleVi: 'R2 · Lũ sông vượt BĐ3 (đã nối xã)',
-    titleEn: 'R2 · River Flood >AL3 (Mapped)',
-    ruleVi: '215 xã >BĐ3 (Precision 61,62%) · 109 xã Hà Nội <BĐ3 · 0 ca ngã ba mơ hồ',
-    ruleEn: '215 communes >AL3 (61.62% Prec.) · 109 Ha Noi <AL3 · 0 unresolved confluences',
+    titleVi: 'R2 · Lũ sông ≥BĐ3 (đã nối xã)',
+    titleEn: 'R2 · River Flood ≥AL3 (Mapped)',
+    ruleVi: '215 xã ≥BĐ3 (Precision 61,62%) · 109 xã Hà Nội <BĐ3 · 0 ca ngã ba mơ hồ',
+    ruleEn: '215 communes ≥AL3 (61.62% Prec.) · 109 Ha Noi <AL3 · 0 unresolved confluences',
     meaningVi:
       'Đã nối xong 2.895 xã GADM v4.1 với 11 trạm thủy văn trên 6 tuyến sông Bắc Bộ theo quy tắc HAND ≤ 10m và trạm gần nhất.',
     meaningEn:
       'Mapped across all 2,895 communes from 11 NCHMF gauges on 6 Northern rivers using HAND ≤10m floodability and nearest-gauge rules.',
     noteVi:
-      'Yên Bái vượt BĐ3 khung 19:00–21:47 ngày 08/09 (bất biến trong độ nhạy); Phủ Lạng Thương 10/09 03:30; Đáp Cầu 10/09 15:30; Vụ Quang 11/09 03:30; Phả Lại 11/09 21:00.',
+      'Yên Bái đạt ≥BĐ3 khung 19:00–21:47 08/09; Phủ Lạng Thương 09/09 09:30; Đáp Cầu 10/09 15:30; Vụ Quang 11/09 03:30*; Phả Lại 11/09 21:00 (kiểm chứng với 15:30).',
     noteEn:
-      'Yen Bai crossed AL3 within [19:00–21:47] 08/09 (sensitivity-invariant); Phu Lang Thuong 10/09 03:30; Dap Cau 10/09 15:30; Vu Quang 11/09 03:30; Pha Lai 11/09 21:00.',
+      'Yen Bai reached ≥AL3 within [19:00–21:47] 08/09; Phu Lang Thuong 09/09 09:30; Dap Cau 10/09 15:30; Vu Quang 11/09 03:30*; Pha Lai 11/09 21:00 (checked vs 15:30).',
   },
   {
     code: 'R3',
@@ -222,12 +222,12 @@ export function SignalGlossaryModal({
 
               <div className="rounded-[5px] border border-lineStrong bg-canvas p-3">
                 <div className="font-mono text-[11px] font-semibold text-[#CDECD7]">
-                  {isEn ? 'Stage-2 Confirm → 1-Tap Offer' : 'Hậu kiểm Tầng 2 → Gửi 1-Chạm'}
+                  {isEn ? 'Stage-2 Confirm → 1-Tap Request' : 'Hậu kiểm Tầng 2 → Đề nghị 1-Chạm'}
                 </div>
                 <p className="mt-1 text-[12px] leading-relaxed text-inkMuted">
                   {isEn
-                    ? 'Post-event S1+R2+R1+HAND confirmation (63.46% Prec / 79.11% Rec) + UBND batch attestation gate 1-Tap offers—never confused with early-alert accuracy.'
-                    : 'Chỉ sau hậu kiểm Sentinel-1 (63,46% Prec / 79,11% Rec) hoặc UBND xã xác nhận, ngân hàng mới phát đề xuất giãn nợ 1-Chạm (không đánh tráo độ chính xác cảnh báo sớm).'}
+                    ? 'Post-event S1+R2+R1+HAND confirmation (13/11 CV 63.46%/79.11%; 215-R2 re-run 63.38%/79.81%) + proposed UBND attestation unlock 1-Tap requests; banks retain 100% approval authority.'
+                    : 'Sau hậu kiểm Sentinel-1 (CV 13/11: 63,46%/79,11%; chạy lại 215 R2: 63,38%/79,81%) hoặc đề xuất UBND xác nhận, khách hàng gửi đề nghị 1-Chạm; ngân hàng giữ quyền xét duyệt cuối.'}
                 </p>
               </div>
             </div>

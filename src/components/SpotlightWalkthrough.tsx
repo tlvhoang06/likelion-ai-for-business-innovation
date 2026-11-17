@@ -20,9 +20,9 @@ export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     titleVi: 'Bản đồ 12 tỉnh & từng lớp tín hiệu',
     titleEn: '12-Province Map & Signal Layers',
     bodyVi:
-      'Lần lượt bật R1 Mưa (>200mm), R2 Lũ sông (>BĐ3, 215 xã), R3 Gió, vệ tinh UNOSAT 3966 và Radar Sentinel-1. Bấm trực tiếp từng thẻ trên bản đồ để tự phối hợp.',
+      'Lần lượt bật R1 Mưa (>200mm), R2 Lũ sông (≥BĐ3, 215 xã), R3 Gió, ảnh hậu kiểm UNOSAT 3966 (12/09) và Radar Sentinel-1 (08–20/09). Bấm trực tiếp từng thẻ trên bản đồ để tự phối hợp.',
     bodyEn:
-      'Sequentially enables R1 Rain (>200mm), R2 River >AL3 (215 communes), R3 Wind, UNOSAT 3966, and Sentinel-1 SAR. Click any layer pill above to toggle directly.',
+      'Sequentially enables R1 Rain (>200mm), R2 River ≥AL3 (215 communes), R3 Wind, post-event UNOSAT 3966 (12/09), and Sentinel-1 SAR (08–20/09). Click any layer pill above to toggle directly.',
   },
   {
     id: 'drill',

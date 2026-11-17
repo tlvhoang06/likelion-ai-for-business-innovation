@@ -20,6 +20,7 @@ import {
   formatNum,
   formatPct,
   formatVndBillions,
+  isPostEventReferenceReady,
   isStationActiveAtDate,
   SIGNAL_COLORS,
 } from '../utils/yagiLogic';
@@ -109,6 +110,7 @@ export function OperationalDrawer({
   onClearAiHighlights,
 }: OperationalDrawerProps) {
   const [copiedJson, setCopiedJson] = useState(false);
+  const [showPostEventLayer, setShowPostEventLayer] = useState(false);
   const [exQueueFilter, setExQueueFilter] = useState<
     'all' | 'watchlist_ml' | 'unflagged_ml' | 'outside_scan'
   >('all');
@@ -119,6 +121,8 @@ export function OperationalDrawer({
   const isUbndSigned = c ? !!ubndSigned[c.gid_3] : false;
   const isExResolved = c ? !!exceptionsResolved[c.gid_3] : false;
   const displayDate = lang === 'en' ? dateStr : dateStr.split('-').reverse().join('/');
+  const postEventReady = isPostEventReferenceReady(dateStr);
+  const postEventVisible = postEventReady || showPostEventLayer;
 
   const hotspotCommunes = useMemo(
     () =>
@@ -204,19 +208,23 @@ export function OperationalDrawer({
         },
         stage2_ml_cv_benchmark: {
           model: 'HistGradientBoostingClassifier_GroupKFold4',
+          dataset_version: '13_11_CV_snapshot (pre-confluence R2=0; finalized 215-R2 10_B7 re-run: 63.38% / 79.81%)',
           classifiable_communes: 2540,
           outside_cv_unknown_communes: 355,
           cv_precision_pct: 63.46,
           cv_recall_pct: 79.11,
-          note: 'Post-event confirmation gate only (Sentinel-1 08-21 Sep + R2 + R1 + HAND); never early-alert accuracy',
+          available_at_observed_date: postEventReady,
+          note: 'Post-event confirmation gate only (Sentinel-1 08-20 Sep + R2 + R1 + HAND); never early-alert accuracy',
         },
         simulated_portfolio_loans: stats.triggeredLoans,
-        campaign_1tap_dispatched: campaignLaunched,
+        request_1tap_logged_sim: campaignLaunched,
+        schema_preview_only: true,
       };
     }
 
     return {
       standard: 'TT_64_2024_TT_NHNN_OpenAPI_OAuth2',
+      schema_preview_only: true,
       audit_retention_years: 5,
       payout_sla_business_days: 15,
       applicable_decrees: ['ND_346_2026', 'TT_29_2025_TT_NHNN', 'ND_86_2024'],
@@ -243,7 +251,7 @@ export function OperationalDrawer({
           first_bd3_bulletin_ict: c.r2_first_bulletin_ict ?? null,
           peak_time_ict: c.r2_peak_time_ict ?? null,
           assignment_status: c.r2_status ?? 'NO_SELECTED_NAMED_RIVER_LINE_INTERSECTION',
-          stations_above_bd3: stations.filter((s) => isStationActiveAtDate(s, dateStr))
+          stations_ge_bd3: stations.filter((s) => isStationActiveAtDate(s, dateStr))
             .length,
         },
         workflow_track:
@@ -258,25 +266,43 @@ export function OperationalDrawer({
           first_trigger_ict: c.r3_time,
         },
       },
-      remote_sensing_validation: {
-        unosat_3966_status: c.unosat_status,
-        unosat_flood_pct: c.unosat_flood_pct,
-        sentinel1_flood_pct: c.s1_flood_pct,
-        sentinel1_cov_pct: c.s1_cov_pct ?? null,
-        hand_le10_pct: c.hand_le10_pct ?? c.r2_hand_le10_pct ?? null,
-      },
-      stage2_ml_confirmation: {
-        model: 'HistGradientBoostingClassifier_CV',
-        post_event_window: '2024-09-08_to_2024-09-21',
-        prob: c.s2_ml_prob ?? null,
-        confirmed: c.s2_ml_confirm ?? null,
-        cv_fold: c.s2_ml_fold ?? null,
-        cv_cutoff: c.s2_ml_cutoff ?? null,
-        coverage_note:
-          c.s2_ml_prob != null
-            ? 'CLASSIFIABLE_2540_CV'
-            : 'NULL_OUTSIDE_UNOSAT_SCAN',
-      },
+      remote_sensing_validation: postEventVisible
+        ? {
+            availability_at_observed_date: postEventReady
+              ? 'AVAILABLE_POST_EVENT'
+              : 'RETROSPECTIVE_PREVIEW_NOT_READY_AT_EARLY_DATE',
+            unosat_3966_date: '2024-09-12',
+            unosat_3966_status: c.unosat_status,
+            unosat_flood_pct: c.unosat_flood_pct,
+            sentinel1_window: '2024-09-08_to_2024-09-20',
+            sentinel1_flood_pct: c.s1_flood_pct,
+            sentinel1_cov_pct: c.s1_cov_pct ?? null,
+            hand_le10_pct: c.hand_le10_pct ?? c.r2_hand_le10_pct ?? null,
+          }
+        : {
+            availability_at_observed_date: 'NOT_AVAILABLE_YET_AT_OBSERVED_DATE',
+            expected_dates: 'UNOSAT 2024-09-12; Sentinel-1 composite 2024-09-08..20',
+          },
+      stage2_ml_confirmation: postEventVisible
+        ? {
+            model: 'HistGradientBoostingClassifier_CV_13_11_snapshot',
+            post_event_window: '2024-09-08_to_2024-09-20',
+            availability_at_observed_date: postEventReady
+              ? 'AVAILABLE_POST_EVENT'
+              : 'RETROSPECTIVE_PREVIEW_NOT_READY_AT_EARLY_DATE',
+            prob: c.s2_ml_prob ?? null,
+            confirmed: c.s2_ml_confirm ?? null,
+            cv_fold: c.s2_ml_fold ?? null,
+            cv_cutoff: c.s2_ml_cutoff ?? null,
+            coverage_note:
+              c.s2_ml_prob != null
+                ? 'CLASSIFIABLE_2540_CV'
+                : 'NULL_OUTSIDE_UNOSAT_SCAN',
+          }
+        : {
+            availability_at_observed_date: 'NOT_AVAILABLE_YET_AT_OBSERVED_DATE',
+            coverage_note: 'Held back on dates prior to 2024-09-12',
+          },
       ai_basis_risk_triage: selectedAi
         ? {
             score: selectedAi.score,
@@ -394,8 +420,16 @@ export function OperationalDrawer({
             </div>
           </div>
 
-          {/* Compact 4-signal verification matrix */}
+          {/* Compact 4-signal verification matrix separated by timeline readiness */}
           <div className="mt-3 divide-y divide-line rounded-[6px] border border-lineStrong bg-canvas text-[12.5px]">
+            <div className="flex items-center justify-between bg-panelAlt/60 px-3 py-1 text-[10.5px] font-mono text-inkDim">
+              <span>
+                {isEn
+                  ? `Stage 1 · Triggers at ${displayDate}`
+                  : `Tầng 1 · Tín hiệu tại ${displayDate}`}
+              </span>
+              <span>{isEn ? 'Rule layer' : 'Lớp quy tắc'}</span>
+            </div>
             <SignalRow
               label={isEn ? 'R1 24h Rain (Dec. 18)' : 'R1 Mưa 24h (Đ.44 QĐ 18)'}
               value={`${c.rain_mm} mm`}
@@ -457,11 +491,11 @@ export function OperationalDrawer({
                     ? c.r2_first_bulletin_ict.slice(5, 16)
                     : c.r2_station === 'Yen Bai'
                     ? '09-08 19:00–21:47*'
-                    : '> BĐ3'
+                    : '≥ AL3'
                   : c.r2 === 1
                   ? isEn
                     ? 'Pre-AL3 date'
-                    : 'Chưa vượt BĐ3'
+                    : 'Chưa đạt BĐ3'
                   : c.r2_station === 'Ha Noi'
                   ? 'R2 = 0 (< BĐ3)'
                   : 'R2 = 0'
@@ -469,69 +503,113 @@ export function OperationalDrawer({
               dotColor={signalEval.r2On ? SIGNAL_COLORS.r2 : undefined}
               mutedStatus={c.r2 !== 1}
             />
-            <SignalRow
-              label="UNOSAT 3966 / Sentinel-1"
-              value={
-                c.unosat_flood_pct !== null
-                  ? isEn
-                    ? `${c.unosat_flood_pct.toFixed(1)}% flood`
-                    : `${c.unosat_flood_pct.toFixed(1)}% ngập`
-                  : isEn
-                  ? 'Outside RRD scan'
-                  : 'Ngoài vùng ĐBSH'
-              }
-              status={
-                c.unosat_label === 1
-                  ? isEn
-                    ? 'Flood >= 5%'
-                    : 'Ngập >= 5%'
-                  : c.unosat_flood_pct !== null
-                  ? isEn
-                    ? 'Below 5%'
-                    : 'Dưới 5%'
-                  : isEn
-                  ? 'Use S1 / Field'
-                  : 'Dùng S1 / Thực địa'
-              }
-              dotColor={
-                c.unosat_label === 1
-                  ? SIGNAL_COLORS.unosat
-                  : c.s1_label === 1
-                  ? SIGNAL_COLORS.s1
-                  : undefined
-              }
-            />
-            <SignalRow
-              label={isEn ? 'Stage-2 ML (S1+HAND)' : 'ML Tầng 2 (S1+HAND)'}
-              value={
-                c.s2_ml_prob != null
-                  ? `${(c.s2_ml_prob * 100).toFixed(1)}% · HAND ${(
-                      c.hand_le10_pct ??
-                      c.r2_hand_le10_pct ??
-                      0
-                    ).toFixed(0)}%`
-                  : `${isEn ? 'No CV' : 'Ngoài CV'} · HAND ${(
-                      c.hand_le10_pct ??
-                      c.r2_hand_le10_pct ??
-                      0
-                    ).toFixed(0)}%`
-              }
-              status={
-                c.s2_ml_prob != null
-                  ? c.s2_ml_confirm
+            <div className="flex items-center justify-between gap-2 bg-panelAlt/70 px-3 py-1.5 text-[10.5px] font-mono">
+              <span className={postEventReady ? 'text-[#8ACBB5]' : 'text-[#FCD34D]'}>
+                {isEn
+                  ? postEventReady
+                    ? 'Stage 2 · Post-Event (12/09 UNOSAT · 08–20/09 S1+ML)'
+                    : `Post-event layer (12/09 · 08–20/09) not yet ready at ${displayDate}`
+                  : postEventReady
+                  ? 'Tầng 2 · Lớp Hậu kiểm (UNOSAT 12/09 · S1+ML 08–20/09)'
+                  : `Lớp hậu kiểm (12/09 · 08–20/09) chưa sẵn có tại ${displayDate}`}
+              </span>
+              {!postEventReady && (
+                <button
+                  type="button"
+                  onClick={() => setShowPostEventLayer((v) => !v)}
+                  className="shrink-0 rounded-[3px] border border-lineStrong bg-panel px-1.5 py-0.5 text-[10px] text-inkMuted hover:border-inkDim hover:text-ink"
+                >
+                  {showPostEventLayer
                     ? isEn
-                      ? `Confirmed (F${c.s2_ml_fold ?? '-'})`
-                      : `Xác nhận (F${c.s2_ml_fold ?? '-'})`
+                      ? 'Hide'
+                      : 'Ẩn đi'
                     : isEn
-                    ? `Below cutoff (F${c.s2_ml_fold ?? '-'})`
-                    : `Dưới ngưỡng (F${c.s2_ml_fold ?? '-'})`
-                  : isEn
-                  ? 'Unknown (use S1)'
-                  : 'Chưa biết (dùng S1)'
-              }
-              dotColor={c.s2_ml_confirm === true ? '#98c127' : undefined}
-              mutedStatus={c.s2_ml_confirm !== true}
-            />
+                    ? 'Preview'
+                    : 'Xem hậu kiểm'}
+                </button>
+              )}
+            </div>
+            {postEventVisible ? (
+              <>
+                <SignalRow
+                  label={
+                    isEn
+                      ? 'UNOSAT 3966 / S1 (Post-event)'
+                      : 'UNOSAT 3966 / S1 (Hậu kiểm)'
+                  }
+                  value={
+                    c.unosat_flood_pct !== null
+                      ? isEn
+                        ? `${c.unosat_flood_pct.toFixed(1)}% flood · S1 ${c.s1_flood_pct !== null ? `${c.s1_flood_pct.toFixed(1)}%` : 'N/A'}`
+                        : `${c.unosat_flood_pct.toFixed(1)}% ngập · S1 ${c.s1_flood_pct !== null ? `${c.s1_flood_pct.toFixed(1)}%` : 'N/A'}`
+                      : isEn
+                      ? 'Insufficient UNOSAT coverage'
+                      : 'Chưa đủ dữ liệu UNOSAT'
+                  }
+                  status={
+                    c.unosat_label === 1
+                      ? isEn
+                        ? 'Flood ≥5%'
+                        : 'Ngập ≥5%'
+                      : c.unosat_flood_pct !== null
+                      ? isEn
+                        ? 'Below 5%'
+                        : 'Dưới 5%'
+                      : isEn
+                      ? 'Unknown (use S1/Field)'
+                      : 'Chưa biết (dùng S1/Thực địa)'
+                  }
+                  dotColor={
+                    c.unosat_label === 1
+                      ? SIGNAL_COLORS.unosat
+                      : c.s1_label === 1
+                      ? SIGNAL_COLORS.s1
+                      : undefined
+                  }
+                />
+                <SignalRow
+                  label={
+                    isEn
+                      ? 'Stage-2 ML (08–20/09 Post-event)'
+                      : 'ML Tầng 2 (Hậu kiểm 08–20/09)'
+                  }
+                  value={
+                    c.s2_ml_prob != null
+                      ? `${(c.s2_ml_prob * 100).toFixed(1)}% · HAND ${(
+                          c.hand_le10_pct ??
+                          c.r2_hand_le10_pct ??
+                          0
+                        ).toFixed(0)}%`
+                      : `${isEn ? 'Unscored' : 'Ngoài CV'} · HAND ${(
+                          c.hand_le10_pct ??
+                          c.r2_hand_le10_pct ??
+                          0
+                        ).toFixed(0)}%`
+                  }
+                  status={
+                    c.s2_ml_prob != null
+                      ? c.s2_ml_confirm
+                        ? isEn
+                          ? `Confirmed (F${c.s2_ml_fold ?? '-'})`
+                          : `Xác nhận (F${c.s2_ml_fold ?? '-'})`
+                        : isEn
+                        ? `Below cutoff (F${c.s2_ml_fold ?? '-'})`
+                        : `Dưới ngưỡng (F${c.s2_ml_fold ?? '-'})`
+                      : isEn
+                      ? 'Unknown (no label)'
+                      : 'Chưa biết (ngoài nhãn)'
+                  }
+                  dotColor={c.s2_ml_confirm === true ? '#98c127' : undefined}
+                  mutedStatus={c.s2_ml_confirm !== true}
+                />
+              </>
+            ) : (
+              <div className="px-3 py-2 text-[11.5px] leading-snug text-inkDim">
+                {isEn
+                  ? 'Withheld at pre-12/09 dates to prevent future leakage. Scrub to 12/09 (Peak 12/09) or click Preview.'
+                  : 'Tạm ẩn trước mốc 12/09 để không nhầm ảnh hậu kiểm thành dữ liệu ngày đầu. Bấm "Đỉnh lũ 12/09" hoặc "Xem hậu kiểm".'}
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -708,8 +786,8 @@ export function OperationalDrawer({
                           ? 'Wind Watchlist (R3-only)'
                           : 'Exception Monitoring'}
                       </b>{' '}
-                      (rain {c.rain_mm}mm{c.r2 === 1 && c.r2_station ? `, river ${c.r2_station} >AL3` : ''}{c.r3_r50 ? ', wind R50' : ''}). After damage confirmation (Sentinel-1 / UBND), dispatch a 1-tap{' '}
-                      <b>3–6 month Group 1 deferral offer</b> inside the 10-day window.
+                      (rain {c.rain_mm}mm{c.r2 === 1 && c.r2_station ? `, river ${c.r2_station} ≥AL3` : ''}{c.r3_r50 ? ', wind R50' : ''}). After damage confirmation (Sentinel-1 / proposed UBND), log a 1-tap{' '}
+                      <b>3–6 month Group 1 deferral request</b> (≤10d overdue; bank decides).
                     </>
                   ) : (
                     <>
@@ -721,8 +799,8 @@ export function OperationalDrawer({
                           ? 'Theo dõi Watchlist (chỉ gió R3)'
                           : 'Theo dõi Ngoại lệ'}
                       </b>{' '}
-                      (mưa {c.rain_mm}mm{c.r2 === 1 && c.r2_station ? `, lũ ${c.r2_station} >BĐ3` : ''}{c.r3_r50 ? ', gió R50' : ''}). Sau bước xác nhận thiệt hại (Sentinel-1 / UBND), gửi đề nghị{' '}
-                      <b>giãn nợ 3–6 tháng giữ Nhóm 1</b> trong cửa sổ 10 ngày.
+                      (mưa {c.rain_mm}mm{c.r2 === 1 && c.r2_station ? `, lũ ${c.r2_station} ≥BĐ3` : ''}{c.r3_r50 ? ', gió R50' : ''}). Sau bước hậu kiểm thiệt hại (Sentinel-1 / đề xuất UBND), gửi đề nghị{' '}
+                      <b>1-Chạm giữ Nhóm 1 (3–6 tháng)</b> để ngân hàng thẩm định (≤10 ngày).
                     </>
                   )}
                 </p>
@@ -742,11 +820,11 @@ export function OperationalDrawer({
                     <span>
                       {isConfirmed
                         ? isEn
-                          ? 'Deferral request recorded (Group 1)'
-                          : 'Đã ghi nhận đề nghị giãn nợ (Nhóm 1)'
+                          ? '1-Tap request logged (pending review)'
+                          : 'Đã nhận đề nghị 1-Chạm (chờ duyệt)'
                         : isEn
-                        ? 'Confirm fast debt deferral'
-                        : 'Xác nhận giãn nợ nhanh'}
+                        ? 'Log 1-tap deferral request'
+                        : 'Gửi đề nghị 1-Chạm (mô phỏng)'}
                     </span>
                   </button>
                 </div>
@@ -754,8 +832,8 @@ export function OperationalDrawer({
                 {isConfirmed && (
                   <div className="mt-2.5 rounded-[4px] border border-line bg-canvas/60 px-3 py-2 text-[11.5px] text-[#CBD5E1]">
                     {isEn
-                      ? `Digital consent saved for ${c.name}: Group 1 kept, 5% provision waived (Decree 86).`
-                      : `Đã lưu xác nhận cho Xã ${c.name}: giữ Nhóm 1, miễn 5% dự phòng NĐ 86.`}
+                      ? `Timestamped 1-Tap request recorded for ${c.name} — routed for bank credit review before retaining Group 1 (Cir. 29/2025; Dec. 86/2024).`
+                      : `Đã nhận đề nghị & mốc thời gian cho Xã ${c.name} — chuyển ngân hàng thẩm định giữ Nhóm 1, miễn 5% dự phòng nếu đạt (TT 29/2025; NĐ 86/2024).`}
                   </div>
                 )}
               </div>
@@ -814,11 +892,11 @@ export function OperationalDrawer({
                     <span>
                       {campaignLaunched
                         ? isEn
-                          ? `Group 1 retained for ${formatNum(stats.savedLoans, lang)} loans`
-                          : `Đã giữ Nhóm 1 cho ${formatNum(stats.savedLoans, lang)} khoản`
+                          ? `1-Tap requests logged for ${formatNum(stats.savedLoans, lang)} loans (pending review)`
+                          : `Đã nhận đề nghị ${formatNum(stats.savedLoans, lang)} khoản (chờ duyệt)`
                         : isEn
-                        ? 'Dispatch regional deferral proposal'
-                        : 'Gửi đề xuất giãn nợ toàn vùng'}
+                        ? 'Log regional 1-tap requests'
+                        : 'Ghi nhận đề nghị toàn vùng'}
                     </span>
                   </button>
                   <button
@@ -887,8 +965,8 @@ export function OperationalDrawer({
               <div className="rounded-[4px] border border-lineStrong bg-canvas p-4">
                 <div className="border-b border-line pb-2.5 text-center text-[12px] font-semibold tracking-wide text-ink">
                   {isEn
-                    ? 'COMMUNE-LEVEL REMOTE-SENSING LOSS ATTESTATION'
-                    : 'BIÊN BẢN XÁC NHẬN THIỆT HẠI VIỄN THÁM CẤP XÃ'}
+                    ? 'PROPOSED COMMUNE SATELLITE LOSS BRIEF (DEMO)'
+                    : 'ĐỀ XUẤT BIÊN BẢN THIỆT HẠI VIỄN THÁM CẤP XÃ (MÔ PHỎNG)'}
                 </div>
 
                 <div className="mt-3 space-y-2 text-[12.5px]">
@@ -912,28 +990,32 @@ export function OperationalDrawer({
                     </span>
                     <span className="font-mono text-ink">
                       {c.rain_mm}mm &middot;{' '}
-                      {c.r2 === 1 ? `R2 ${c.r2_station ?? '>BĐ3'}` : 'R2 —'} &middot; R50:{' '}
+                      {c.r2 === 1 ? `R2 ${c.r2_station ?? '≥BĐ3'}` : 'R2 —'} &middot; R50:{' '}
                       {c.r3_r50 ? (isEn ? 'Yes' : 'Có') : isEn ? 'No' : 'Không'}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2 border-b border-line/60 pb-1.5">
                     <span className="text-inkDim">
-                      {isEn ? 'UNOSAT 3966 Flood Scan' : 'Ảnh ngập UNOSAT 3966'}
+                      {isEn ? 'UNOSAT 3966 (12/09 Post-event)' : 'UNOSAT 3966 (Hậu kiểm 12/09)'}
                     </span>
                     <span className="font-mono text-ink">
-                      {c.unosat_flood_pct !== null
-                        ? `${c.unosat_flood_ha.toFixed(1)} ha (${c.unosat_flood_pct.toFixed(2)}%)`
+                      {postEventVisible
+                        ? c.unosat_flood_pct !== null
+                          ? `${c.unosat_flood_ha.toFixed(1)} ha (${c.unosat_flood_pct.toFixed(2)}%)`
+                          : isEn
+                          ? 'Insufficient UNOSAT coverage'
+                          : 'Chưa đủ dữ liệu UNOSAT'
                         : isEn
-                        ? 'Outside RRD scan'
-                        : 'Ngoài vùng quét ĐBSH'}
+                        ? 'Available post-12/09 (see 12/09+)'
+                        : 'Có từ 12/09 (kéo tới 12/09+)'}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2">
                     <span className="text-inkDim">
-                      {isEn ? 'Rural loan accounts in commune' : 'Hồ sơ vay nông thôn trong xã'}
+                      {isEn ? 'Simulated rural loans in commune' : 'Hồ sơ vay mô phỏng trong xã'}
                     </span>
                     <span className="font-mono text-ink">
-                      {formatNum(c.sim_loans, lang)} {isEn ? 'borrowers' : 'hộ vay'}
+                      {formatNum(c.sim_loans, lang)} {isEn ? 'borrowers (sim.)' : 'hộ (giả lập)'}
                     </span>
                   </div>
                 </div>
@@ -1077,10 +1159,10 @@ export function OperationalDrawer({
                     >
                       {c.s2_ml_prob != null
                         ? isEn
-                          ? `Stage-2 ML: ${(c.s2_ml_prob * 100).toFixed(1)}% CV (${
+                          ? `Stage-2 ML (08–20/09): ${(c.s2_ml_prob * 100).toFixed(1)}% CV (${
                               c.s2_ml_confirm ? 'Confirm' : 'Low'
                             })`
-                          : `ML Tầng 2: ${(c.s2_ml_prob * 100).toFixed(1)}% CV (${
+                          : `ML Tầng 2 (08–20/09): ${(c.s2_ml_prob * 100).toFixed(1)}% CV (${
                               c.s2_ml_confirm ? 'Xác nhận' : 'Dưới ngưỡng'
                             })`
                         : isEn
@@ -1090,6 +1172,13 @@ export function OperationalDrawer({
                     <span className="rounded-[3px] border border-lineStrong bg-panelAlt px-1.5 py-0.5 text-inkMuted">
                       HAND ≤10m: {(c.hand_le10_pct ?? c.r2_hand_le10_pct ?? 0).toFixed(1)}%
                     </span>
+                    {!postEventReady && (
+                      <span className="rounded-[3px] border border-amber-500/40 bg-amber-950/25 px-1.5 py-0.5 text-amber-200">
+                        {isEn
+                          ? `Post-event data (not ready at ${displayDate})`
+                          : `Dữ liệu hậu kiểm (chưa có ngày ${displayDate})`}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1.5 text-[11.5px] leading-relaxed text-inkMuted">
                     {isEn ? selectedAi.summaryEn : selectedAi.summaryVi}
@@ -1164,19 +1253,23 @@ export function OperationalDrawer({
                         : 'Tiếp nhận đơn giấy bổ sung tại quầy'}
                     </span>
                   </div>
-                  <div className="flex justify-between gap-2 border-b border-line/60 pb-1.5">
-                    <span className="text-inkDim">
-                      {isEn ? 'Rainfall / Satellite' : 'Dữ liệu mưa / vệ tinh'}
-                    </span>
-                    <span className="font-mono text-ink">
+                  <tr>
+                    <td className="px-3 py-2 font-mono text-ink">
+                      {isEn ? 'Rainfall / Satellite (post-12/09)' : 'Mưa / Vệ tinh (hậu kiểm 12/09)'}
+                    </td>
+                    <td className="font-mono text-ink">
                       {isEn ? 'Rain' : 'Mưa'} {c.rain_mm}mm &middot;{' '}
-                      {c.unosat_flood_pct !== null
-                        ? `UNOSAT ${c.unosat_flood_pct.toFixed(1)}%`
+                      {postEventVisible
+                        ? c.unosat_flood_pct !== null
+                          ? `UNOSAT ${c.unosat_flood_pct.toFixed(1)}%`
+                          : isEn
+                          ? 'Unknown UNOSAT (use S1/Field)'
+                          : 'Chưa đủ UNOSAT (dùng S1/Thực địa)'
                         : isEn
-                        ? 'S1 / Field'
-                        : 'S1 / Thực địa'}
-                    </span>
-                  </div>
+                        ? 'Withheld at pre-12/09'
+                        : 'Tạm ẩn trước 12/09'}
+                    </td>
+                  </tr>
                   <div className="flex justify-between gap-2">
                     <span className="text-inkDim">
                       {isEn ? 'Loans under officer review' : 'Hồ sơ vay thuộc diện rà soát'}
@@ -1484,8 +1577,8 @@ export function OperationalDrawer({
                   {isEn ? '11 Gauges -> 2,895-Commune R2 Crosswalk:' : '11 trạm thủy văn -> Khớp R2 toàn 2.895 xã:'}
                 </b>{' '}
                 {isEn
-                  ? '5 AL3 stations map 215 R2=1 communes (0 unresolved confluences); 109 Hanoi communes map < AL3 (11.30m vs 11.50m). Yên Bái earliest-BĐ3 minute is bounded 08/09 19:00–21:47*.'
-                  : '5 trạm vượt BĐ3 nối 215 xã R2=1 (0 giao cắt trùng chưa xử lý); 109 xã Hà Nội dưới BĐ3 (11,30m < 11,50m). Mốc phút BĐ3 sớm nhất Yên Bái trong khoảng 08/09 19:00–21:47*.'}
+                  ? '5 ≥AL3 gauges map 215 R2=1 communes (on Yagi all 5 exceeded strictly, so >AL3 = ≥AL3; 0 unresolved confluences); 109 Hanoi communes <AL3 (11.30m vs 11.50m). Direct bulletins (Đáp Cầu, Phủ Lạng Thương, Phả Lại 21:00 vs 15:30), bounded Yên Bái [08/09 19:00–21:47*], and inferred Vụ Quang 03:30*.'
+                  : '5 trạm đạt ≥BĐ3 nối 215 xã R2=1 (trên Yagi không trạm nào bằng ngưỡng nên > hay ≥ đều ra 215 xã; 0 ca mơ hồ); 109 xã Hà Nội <BĐ3 (11,30m < 11,50m). Gồm bản tin trực tiếp (Đáp Cầu, Phủ Lạng Thương, Phả Lại 21:00 vs 15:30), khoảng Yên Bái [08/09 19:00–21:47*] và giờ suy luận Vụ Quang 03:30*.'}
               </div>
             </div>
 
@@ -1552,7 +1645,7 @@ export function OperationalDrawer({
                                 style={{ backgroundColor: SIGNAL_COLORS.r2Alert }}
                               />
                               <span>
-                                &gt;{isEn ? 'AL3' : 'BĐ3'} · {bulletinLabel}
+                                &ge;{isEn ? 'AL3' : 'BĐ3'} · {bulletinLabel}
                               </span>
                             </span>
                           ) : (
@@ -1578,8 +1671,8 @@ export function OperationalDrawer({
               <div className="mb-1.5 flex items-center justify-between">
                 <span className="text-[12px] font-medium text-ink">
                   {isEn
-                    ? 'Open API Payload (Cir. 64/2024 · Dec. 346/2026 Parametric)'
-                    : 'Open API Payload (TT 64/2024 · NĐ 346/2026 Bảo hiểm chỉ số)'}
+                    ? 'Open API Schema Preview (Cir. 64/2024 · Dec. 346/2026)'
+                    : 'Cấu trúc mẫu Open API (TT 64/2024 · NĐ 346/2026)'}
                 </span>
                 <button
                   type="button"

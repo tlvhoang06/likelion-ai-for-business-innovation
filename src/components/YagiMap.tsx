@@ -11,6 +11,7 @@ import {
   evaluateCommuneAtDate,
   formatNum,
   formatVndBillions,
+  isPostEventReferenceReady,
   SIGNAL_COLORS,
 } from '../utils/yagiLogic';
 
@@ -82,13 +83,24 @@ function buildCalloutHtml(
     statusText = lang === 'en' ? 'Sentinel-1 flood' : 'Ngập Sentinel-1';
   }
 
-  const unoHero =
-    c.unosat_flood_pct !== null
+  const postReady = isPostEventReferenceReady(dateStr);
+  const showRetroOnPopup = postReady || layers.unosat || layers.s1;
+  const unoHero = showRetroOnPopup
+    ? c.unosat_flood_pct !== null
       ? `${c.unosat_flood_pct.toFixed(1)}%`
       : lang === 'en'
       ? 'Out of scan'
-      : 'Ngoài vùng';
-  const s1Txt = c.s1_flood_pct !== null ? `${c.s1_flood_pct.toFixed(1)}%` : 'N/A';
+      : 'Ngoài vùng'
+    : lang === 'en'
+    ? 'Post-12/09'
+    : 'Có từ 12/09';
+  const s1Txt = showRetroOnPopup
+    ? c.s1_flood_pct !== null
+      ? `${c.s1_flood_pct.toFixed(1)}%`
+      : 'N/A'
+    : lang === 'en'
+    ? '08–20/09'
+    : '08–20/09';
 
   return `
     <div style="font-family:'IBM Plex Sans',system-ui,sans-serif;padding:10px 12px;">
@@ -105,11 +117,19 @@ function buildCalloutHtml(
       <!-- Compact 2-Metric Strip -->
       <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px;">
         <div style="background:rgba(255,255,255,0.035);border-radius:6px;padding:6px 8px;">
-          <div style="font-size:10px;color:#7E8A9B;">${lang === 'en' ? 'UNOSAT Flood' : 'Ngập UNOSAT'}</div>
+          <div style="font-size:10px;color:#7E8A9B;">${
+            lang === 'en'
+              ? postReady
+                ? 'UNOSAT (12/09)'
+                : 'UNOSAT (Post-event)'
+              : postReady
+              ? 'UNOSAT (12/09)'
+              : 'UNOSAT (Hậu kiểm)'
+          }</div>
           <div style="margin-top:1px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:#FFFFFF;line-height:1.2;">${unoHero}</div>
         </div>
         <div style="background:rgba(255,255,255,0.035);border-radius:6px;padding:6px 8px;">
-          <div style="font-size:10px;color:#7E8A9B;">${lang === 'en' ? 'Est. Loans' : 'Hồ sơ ước tính'}</div>
+          <div style="font-size:10px;color:#7E8A9B;">${lang === 'en' ? 'Sim. Loans' : 'Hồ sơ giả lập'}</div>
           <div style="margin-top:1px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:#FFFFFF;line-height:1.2;">${c.sim_loans} <span style="font-size:10.5px;font-weight:400;color:#9CA6B4;">${lang === 'en' ? 'loans' : 'khoản'}</span></div>
         </div>
       </div>
@@ -124,8 +144,8 @@ function buildCalloutHtml(
       ${
         confirmed || signedUbnd
           ? `<div style="margin-top:5px;display:flex;gap:10px;flex-wrap:wrap;font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:#8ACBB5;">
-              ${confirmed ? `<span>&#10003; ${lang === 'en' ? 'Group 1 kept' : 'Đã giữ Nhóm 1'}</span>` : ''}
-              ${signedUbnd ? `<span>&#10003; ${lang === 'en' ? 'Commune signed' : 'UBND đã ký'}</span>` : ''}
+              ${confirmed ? `<span>&#10003; ${lang === 'en' ? '1-Tap logged (pending)' : 'Đã ghi 1-Chạm (chờ duyệt)'}</span>` : ''}
+              ${signedUbnd ? `<span>&#10003; ${lang === 'en' ? 'Proposed UBND' : 'Đề xuất UBND'}</span>` : ''}
              </div>`
           : ''
       }
@@ -255,13 +275,15 @@ export function YagiMap({
           const c = cmap.get(gid);
           if (!c) return;
           const ev = evaluateCommuneAtDate(c, d, lyr);
-          const unoText =
-            c.unosat_flood_pct !== null
-              ? `${c.unosat_flood_pct.toFixed(1)}% ngập`
-              : 'Ngoài UNOSAT';
+          const showRetroTip = isPostEventReferenceReady(d) || lyr.unosat || lyr.s1;
+          const unoText = showRetroTip
+            ? c.unosat_flood_pct !== null
+              ? `${c.unosat_flood_pct.toFixed(1)}% ngập${isPostEventReferenceReady(d) ? '' : ' (hậu kiểm 12/09)'}`
+              : 'Chưa đủ UNOSAT'
+            : 'Hậu kiểm từ 12/09';
           const r2Text =
             c.r2 === 1 && c.r2_station
-              ? ` &middot; R2: ${escHtml(c.r2_station)} (&gt;BĐ3)`
+              ? ` &middot; R2: ${escHtml(c.r2_station)} (&ge;BĐ3)`
               : c.r2_station === 'Ha Noi'
               ? ' &middot; Hà Nội (&lt;BĐ3)'
               : '';
@@ -592,7 +614,7 @@ export function YagiMap({
   };
 
   return (
-    <div data-tour="map-desk" className="flex min-h-0 flex-1 flex-col bg-canvas">
+    <div data-tour="map-desk" className="flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas">
       {/* Unobstructed Top Map Toolbar & Live Metrics Strip */}
       <div className="flex flex-col gap-2 border-b border-lineStrong bg-[#141922] px-4 py-2.5">
         {/* Stretched Full-Width Layer Trigger Controls */}
@@ -704,28 +726,28 @@ export function YagiMap({
         </div>
 
         {/* Bold Uniformly Highlighted Regional Telemetry Readout */}
-        <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-1.5 border-t border-line pt-2 text-[12px] font-bold text-[#F1F5F9]">
-          <div className="flex items-baseline gap-1.5">
-            <span>{lang === 'en' ? 'Early Flag (R1|R2|R3):' : 'Cảnh báo sớm:'}</span>
+        <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-line pt-2 text-[11.5px] font-bold text-[#F1F5F9] xl:text-[12px]">
+          <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+            <span>{lang === 'en' ? 'Early Flag:' : 'Cảnh báo sớm:'}</span>
             <span className="font-mono tabular-nums">
               {formatNum(stats.triggeredCount, lang)} / {formatNum(2895, lang)}
             </span>
           </div>
-          <div className="hidden items-baseline gap-1.5 md:flex">
+          <div className="hidden items-baseline gap-1.5 whitespace-nowrap md:flex">
             <span className="text-[#8ACBB5]">{lang === 'en' ? 'Priority R1|R2:' : 'Ưu tiên R1|R2:'}</span>
             <span className="font-mono tabular-nums">{formatNum(stats.priorityCount, lang)}</span>
             <span className="text-inkDim">·</span>
             <span className="text-[#ff8ca1]">{lang === 'en' ? 'Watchlist R3:' : 'Theo dõi R3:'}</span>
             <span className="font-mono tabular-nums">{formatNum(stats.watchlistCount, lang)}</span>
           </div>
-          <div className="hidden items-baseline gap-1.5 xl:flex">
-            <span>{lang === 'en' ? 'Portfolio at risk (sim):' : 'Dư nợ (giả lập):'}</span>
+          <div className="hidden items-baseline gap-1.5 whitespace-nowrap xl:flex">
+            <span>{lang === 'en' ? 'Portfolio (sim):' : 'Dư nợ (giả lập):'}</span>
             <span className="font-mono tabular-nums">
               {formatVndBillions(stats.triggeredDebtM, lang)}
             </span>
           </div>
-          <div className="flex items-baseline gap-1.5">
-            <span>{lang === 'en' ? 'Group 1 kept:' : 'Giữ Nhóm 1:'}</span>
+          <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+            <span>{lang === 'en' ? '1-Tap req (sim):' : 'Đề nghị 1-Chạm:'}</span>
             <span
               className={`font-mono tabular-nums ${
                 stats.savedLoans > 0 ? 'text-[#8ACBB5]' : 'text-[#F1F5F9]'
@@ -738,7 +760,7 @@ export function YagiMap({
       </div>
 
       {/* Unobstructed Interactive Leaflet Stage */}
-      <div className="relative min-h-[360px] flex-1 bg-canvas">
+      <div className="relative min-h-[260px] flex-1 overflow-hidden bg-canvas">
         <div ref={containerRef} className="absolute inset-0" />
 
         {/* Reset Bounds & Active AI Highlight Utility Strip on bottom-left */}
@@ -801,8 +823,8 @@ export function YagiMap({
               />
               <span>
                 {lang === 'en'
-                  ? 'R2 River Stage >AL3 (215 communes)'
-                  : 'R2 Lũ sông >BĐ3 (215 xã)'}
+                  ? 'R2 River Stage ≥AL3 (215 communes)'
+                  : 'R2 Lũ sông ≥BĐ3 (215 xã)'}
               </span>
             </div>
             <div className="mt-1 flex items-center gap-2">
@@ -833,7 +855,7 @@ export function YagiMap({
                 style={{ backgroundColor: SIGNAL_COLORS.unosat }}
               />
               <span>
-                {lang === 'en' ? 'UNOSAT 3966 flooded ≥5%' : 'UNOSAT 3966 ngập ≥5%'}
+                {lang === 'en' ? 'UNOSAT 3966 ≥5% (12/09 post-event)' : 'UNOSAT 3966 ≥5% (hậu kiểm 12/09)'}
               </span>
             </div>
             <div className="mt-1 flex items-center gap-2">
@@ -842,7 +864,7 @@ export function YagiMap({
                 style={{ backgroundColor: SIGNAL_COLORS.s1 }}
               />
               <span>
-                {lang === 'en' ? 'Sentinel-1 SAR flood' : 'Sentinel-1 SAR ngập'}
+                {lang === 'en' ? 'Sentinel-1 SAR (08–20/09)' : 'Sentinel-1 SAR (08–20/09)'}
               </span>
             </div>
             <div className="mt-1 flex items-center gap-2">

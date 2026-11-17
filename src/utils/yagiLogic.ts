@@ -40,8 +40,8 @@ export const TIMELINE_DAYS: TimelineDay[] = [
     displayDate: '08/09/2024',
     tag: 'Mưa R1',
     tagEn: 'Rain R1',
-    summary: 'Hoàn lưu gây mưa >200mm: 1.070 xã chạm R1; Yên Bái (Sông Thao) vượt BĐ3 khung 19:00–21:47 (+48 xã R2)',
-    summaryEn: 'Rain >200mm hits 1,070 R1 communes; Yen Bai crosses AL3 within [19:00–21:47] (+48 R2 communes)',
+    summary: 'Hoàn lưu gây mưa >200mm: 1.070 xã chạm R1; Yên Bái (Sông Thao) đạt ≥BĐ3 khung 19:00–21:47 (+48 xã R2)',
+    summaryEn: 'Rain >200mm hits 1,070 R1 communes; Yen Bai crosses ≥AL3 within [19:00–21:47] (+48 R2 communes)',
   },
   {
     date: '2024-09-09',
@@ -54,8 +54,8 @@ export const TIMELINE_DAYS: TimelineDay[] = [
     date: '2024-09-10',
     shortDate: '10/09',
     displayDate: '10/09/2024',
-    summary: 'Thêm 98 xã R1; Phủ Lạng Thương (03:30) & Đáp Cầu (15:30) vượt BĐ3 (+100 xã R2); Yên Bái đạt đỉnh 35,73m',
-    summaryEn: '98 more R1 communes; Phu Lang Thuong (03:30) & Dap Cau (15:30) cross AL3 (+100 R2); Yen Bai peaks 35.73m',
+    summary: 'Thêm 98 xã R1; Phủ Lạng Thương (03:30) & Đáp Cầu (15:30) đạt ≥BĐ3 (+100 xã R2); Yên Bái đỉnh 35,73m',
+    summaryEn: '98 more R1 communes; Phu Lang Thuong (03:30) & Dap Cau (15:30) reach ≥AL3 (+100 R2); Yen Bai peaks 35.73m',
   },
   {
     date: '2024-09-11',
@@ -63,8 +63,8 @@ export const TIMELINE_DAYS: TimelineDay[] = [
     displayDate: '11/09/2024',
     tag: 'Đỉnh lũ',
     tagEn: 'River Peak',
-    summary: 'Vụ Quang (03:30) & Phả Lại (21:00) vượt BĐ3 → đủ 215 xã R2; cộng gộp 2.692 xã R1|R2|R3 (1.338 xã R1|R2)',
-    summaryEn: 'Vu Quang (03:30) & Pha Lai (21:00) cross AL3 → 215 R2; 2,692 combined early flag (1,338 R1|R2 Priority)',
+    summary: 'Vụ Quang (03:30*) & Phả Lại (21:00) đạt ≥BĐ3 → đủ 215 xã R2; cộng gộp 2.692 xã R1|R2|R3 (1.338 xã R1|R2)',
+    summaryEn: 'Vu Quang (03:30*) & Pha Lai (21:00) reach ≥AL3 → 215 R2; 2,692 combined early flag (1,338 R1|R2 Priority)',
   },
   {
     date: '2024-09-12',
@@ -72,22 +72,22 @@ export const TIMELINE_DAYS: TimelineDay[] = [
     displayDate: '12/09/2024',
     tag: 'UNOSAT',
     tagEn: 'UNOSAT',
-    summary: 'Đáp Cầu (7,79m) & Phả Lại (6,25m) đạt đỉnh; Hà Nội 11,30m (<BĐ3); UNOSAT 3966 xác nhận 718 xã ngập ≥5%',
-    summaryEn: 'Dap Cau (7.79m) & Pha Lai (6.25m) peak; Ha Noi 11.30m (<AL3); UNOSAT 3966 confirms 718 flooded ≥5%',
+    summary: 'Đáp Cầu (7,79m) & Phả Lại (6,25m) đạt đỉnh; Hà Nội 11,30m (<BĐ3); ảnh hậu kiểm UNOSAT 3966 ghi 718 xã ngập ≥5%',
+    summaryEn: 'Dap Cau (7.79m) & Pha Lai (6.25m) peak; Ha Noi 11.30m (<AL3); post-event UNOSAT 3966 maps 718 flooded ≥5%',
   },
   {
     date: '2024-09-13',
     shortDate: '13/09',
     displayDate: '13/09/2024',
-    summary: 'Hậu kiểm Sentinel-1 & UBND chốt xác nhận thiệt hại trước khi phát đề xuất giãn nợ 1-Chạm (≤10 ngày TT 29/2025)',
-    summaryEn: 'Post-event Sentinel-1 & UBND confirmation gates 1-Tap deferral dispatch inside TT 29/2025 ≤10d window',
+    summary: 'Lớp hậu kiểm Sentinel-1 & đề xuất xác nhận UBND trước khi mở đề nghị 1-Chạm chờ ngân hàng duyệt (≤10 ngày TT 29/2025)',
+    summaryEn: 'Post-event Sentinel-1 & proposed UBND confirmation gate 1-Tap requests for bank review inside ≤10d window',
   },
   {
     date: '2024-09-14',
     shortDate: '14/09',
     displayDate: '14/09/2024',
-    summary: 'Khóa sổ kiểm toán NĐ 346/2026 & tổng hợp giữ Nhóm nợ 1 gửi NHNN (phân biệt rõ luồng Ưu tiên & Watchlist)',
-    summaryEn: 'Close Decree 346/2026 audit ledger & compile Group 1 retention report for SBV (Priority vs Watchlist)',
+    summary: 'Khóa sổ kiểm toán NĐ 346/2026 & tổng hợp hồ sơ đề nghị giữ Nhóm nợ 1 chờ ngân hàng xét duyệt gửi NHNN',
+    summaryEn: 'Close Decree 346/2026 audit ledger & compile Group 1 review dossiers for partner bank approval & SBV reporting',
   },
 ];
 
@@ -131,6 +131,13 @@ export interface CommuneSignalEval {
   fillColor: string;
   fillOpacity: number;
   strokeColor: string;
+}
+
+export const UNOSAT_READY_DATE = '2024-09-12';
+export const S1_COMPOSITE_WINDOW = '08–20/09/2024';
+
+export function isPostEventReferenceReady(dateStr: string): boolean {
+  return dateStr >= UNOSAT_READY_DATE;
 }
 
 export function getCommuneR2Date(c: CommuneYagiStatus): string | null {

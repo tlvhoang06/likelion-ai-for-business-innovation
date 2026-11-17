@@ -68,11 +68,11 @@ export function DeferralConfirmModal({
               <span>
                 {isRegional
                   ? lang === 'en'
-                    ? 'Regional Campaign · Human Approval · Circ. 29/2025'
-                    : 'Xác nhận phát chiến dịch · TT 29/2025'
+                    ? 'Regional Request Batch · Human Approval · Cir. 29/2025'
+                    : 'Ghi nhận gửi toàn vùng · Ngân hàng duyệt · TT 29/2025'
                   : lang === 'en'
-                  ? '1-Tap Commune Approval · Circ. 29/2025'
-                  : 'Xác nhận 1-chạm cấp xã · TT 29/2025'}
+                  ? '1-Tap Request Dispatch · Pending Bank Review'
+                  : 'Gửi đề nghị 1-Chạm · Chờ ngân hàng duyệt'}
               </span>
             </div>
             <h2
@@ -81,20 +81,20 @@ export function DeferralConfirmModal({
             >
               {isRegional
                 ? lang === 'en'
-                  ? 'Confirm regional debt-deferral dispatch?'
-                  : 'Xác nhận gửi đề xuất giãn nợ toàn vùng?'
+                  ? 'Log regional 1-tap requests for bank review?'
+                  : 'Ghi nhận đề nghị giãn nợ toàn vùng chờ ngân hàng duyệt?'
                 : lang === 'en'
-                ? `Confirm quick debt deferral for ${commune!.name}?`
-                : `Xác nhận giãn nợ nhanh cho Xã ${commune!.name}?`}
+                ? `Log 1-tap deferral request for ${commune!.name}?`
+                : `Ghi nhận đề nghị 1-Chạm cho Xã ${commune!.name}?`}
             </h2>
             <p className="mt-0.5 text-[12px] text-inkMuted">
               {isRegional
                 ? lang === 'en'
-                  ? `Observed ${formattedDate} · Dispatch 1-Tap App/SMS offers for post-confirmation communes (R1|R2 Priority & confirmed R3 Watchlist).`
-                  : `Mốc quan trắc ${formattedDate} · Phát đề xuất 1-Chạm qua App/SMS cho các xã đã hậu kiểm thiệt hại (từ luồng Ưu tiên R1|R2 & Watchlist R3).`
+                  ? `Observed ${formattedDate} · Logs timestamped 1-Tap requests across post-confirmation communes for bank credit review (D01).`
+                  : `Mốc quan trắc ${formattedDate} · Ghi nhận đề nghị 1-Chạm (kèm mốc thời gian) cho các xã đã hậu kiểm để ngân hàng xét duyệt (D01).`
                 : lang === 'en'
-                ? `${commune!.district}, ${commune!.province} (${commune!.gid_3}) · Rain ${commune!.rain_mm}mm${commune!.r2 === 1 && commune!.r2_station ? ` · River ${commune!.r2_station} (>AL3)` : ''}${commune!.r3_r50 ? ' · Wind R50' : ''}`
-                : `${commune!.district}, ${commune!.province} (${commune!.gid_3}) · Mưa ${commune!.rain_mm}mm${commune!.r2 === 1 && commune!.r2_station ? ` · Lũ ${commune!.r2_station} (>BĐ3)` : ''}${commune!.r3_r50 ? ' · Gió R50' : ''}`}
+                ? `${commune!.district}, ${commune!.province} (${commune!.gid_3}) · Rain ${commune!.rain_mm}mm${commune!.r2 === 1 && commune!.r2_station ? ` · River ${commune!.r2_station} (≥AL3)` : ''}${commune!.r3_r50 ? ' · Wind R50' : ''}`
+                : `${commune!.district}, ${commune!.province} (${commune!.gid_3}) · Mưa ${commune!.rain_mm}mm${commune!.r2 === 1 && commune!.r2_station ? ` · Lũ ${commune!.r2_station} (≥BĐ3)` : ''}${commune!.r3_r50 ? ' · Gió R50' : ''}`}
             </p>
           </div>
           <button
@@ -127,7 +127,7 @@ export function DeferralConfirmModal({
             </div>
             <div className="rounded-[6px] border border-lineStrong bg-canvas px-3 py-2.5">
               <div className="text-[11px] text-inkDim">
-                {lang === 'en' ? 'Group 1 Debt Retained' : 'Dư nợ giữ Nhóm 1'}
+                {lang === 'en' ? 'Debt in Review (Sim.)' : 'Dư nợ trình duyệt (giả lập)'}
               </div>
               <div className="mt-0.5 font-mono text-[13.5px] font-semibold text-ink tabular-nums">
                 {formatVndBillions(debtM, lang)}
@@ -135,7 +135,7 @@ export function DeferralConfirmModal({
             </div>
             <div className="rounded-[6px] border border-lineStrong bg-canvas px-3 py-2.5">
               <div className="text-[11px] text-inkDim">
-                {lang === 'en' ? '5% Provision Avoided' : 'Dự phòng 5% tránh được'}
+                {lang === 'en' ? 'Est. 5% Provision at Stake' : 'Dự phòng 5% tiềm năng'}
               </div>
               <div className="mt-0.5 font-mono text-[13.5px] font-semibold text-[#8ACBB5] tabular-nums">
                 {formatVndBillions(provisionSavedM, lang)}
@@ -146,25 +146,25 @@ export function DeferralConfirmModal({
           <div className="space-y-1.5 rounded-[6px] border border-lineStrong bg-panelAlt p-3.5 text-[12px] leading-relaxed text-inkMuted">
             <div className="font-medium text-ink">
               {lang === 'en'
-                ? 'Actions to be committed upon confirmation:'
-                : 'Nội dung nghiệp vụ sẽ được ghi nhận:'}
+                ? 'Actions to be logged for bank review:'
+                : 'Nội dung nghiệp vụ sẽ ghi nhận (chờ ngân hàng duyệt):'}
             </div>
             {lang === 'en' ? (
               <>
                 <p>
-                  &bull; Two-stage compliance: dispatch 1-Tap offer only <b className="text-ink">after Sentinel-1 / UBND flood confirmation</b>, retaining <b className="text-ink">Debt Group 1</b> (3–6m extension) inside the 10-day window (Decree 55/2015 / 156/2025 &amp; Cir. 29/2025).
+                  &bull; Two-stage compliance (D01): unlock 1-Tap request only <b className="text-ink">after Sentinel-1 / proposed UBND confirmation</b>. Logging a request <b className="text-ink">does NOT auto-approve</b>; the bank checks loan conditions &amp; ≤10-day window (Cir. 29/2025) before retaining Group 1.
                 </p>
                 <p>
-                  &bull; Avoid <b className="text-ink">5% Group 2 provisioning</b> (Decree 86/2024); keep paper counter intake open for unconnected households.
+                  &bull; Potential <b className="text-ink">5% Group 2 provision</b> avoided if approved (Decree 86/2024; collateral reduces net provision); counter paper intake stays open.
                 </p>
               </>
             ) : (
               <>
                 <p>
-                  &bull; Đúng quy trình 2 tầng: chỉ phát đề xuất 1-Chạm <b className="text-ink">sau bước xác nhận thiệt hại (Sentinel-1 / UBND)</b>, giữ <b className="text-ink">Nhóm nợ 1</b> gia hạn <b className="text-ink">3–6 tháng</b> trong cửa sổ ≤10 ngày (NĐ 55/2015 / 156/2025 &amp; TT 29/2025).
+                  &bull; Đúng quy trình 2 tầng (D01): chỉ mở 1-Chạm <b className="text-ink">sau bước hậu kiểm Sentinel-1 / đề xuất UBND</b>. Ghi nhận đề nghị <b className="text-ink">không tự động giữ Nhóm nợ 1</b>; ngân hàng thẩm định điều kiện &amp; hạn ≤10 ngày (TT 29/2025) trước khi duyệt.
                 </p>
                 <p>
-                  &bull; Miễn trích lập <b className="text-ink">5% dự phòng Nhóm 2</b> theo NĐ 86/2024; duy trì kênh nộp đơn giấy tại quầy cho hộ không dùng smartphone hoặc mất sóng.
+                  &bull; Kịch bản tránh <b className="text-ink">5% dự phòng Nhóm 2</b> nếu được duyệt (NĐ 86/2024, giả định chưa khấu trừ TSĐB); duy trì kênh nộp đơn giấy tại quầy.
                 </p>
               </>
             )}
@@ -199,11 +199,11 @@ export function DeferralConfirmModal({
             <span>
               {isRegional
                 ? lang === 'en'
-                  ? 'Confirm Regional Send'
-                  : 'Xác nhận gửi toàn vùng'
+                  ? 'Log Regional Requests'
+                  : 'Ghi nhận gửi toàn vùng'
                 : lang === 'en'
-                ? 'Confirm Commune Deferral'
-                : 'Xác nhận giãn nợ cho xã'}
+                ? 'Log Request for Review'
+                : 'Ghi nhận đề nghị chờ duyệt'}
             </span>
           </button>
         </div>
