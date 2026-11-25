@@ -1,0 +1,73 @@
+# ResiLend — Empirical Dataset & Reproducibility Package (Typhoon Yagi Backtest)
+
+**Project:** ResiLend — Shared Parametric Trigger and AI-Assisted Triage Infrastructure for Post-Disaster Agricultural Debt Relief  
+**Team:** EK15 (Trần Văn Nhân · Lê Hoài Tuấn Khang · Trương Lê Vũ Hoàng · Nguyễn Đức Nguyên)  
+**Interactive Web MVP:** https://resilend-demo.vercel.app  
+**Google Colab Pipeline (R1 Rainfall & R3 Wind):** https://colab.research.google.com/drive/10927s5nI2yybFuMyMTwYHnHxJmNZh-Sc?usp=sharing  
+**Spatial Scope:** 2,895 Communes (`GID_3`, GADM v4.1 pre-2025 administrative boundaries) across 12 Northern Vietnamese Provinces (`Bắc Giang`, `Bắc Ninh`, `Hà Nội`, `Hải Dương`, `Hải Phòng`, `Hưng Yên`, `Lào Cai`, `Ninh Bình`, `Phú Thọ`, `Quảng Ninh`, `Thái Nguyên`, `Yên Bái`).  
+**Temporal Window:** Typhoon Yagi (06–15 September 2024; Vietnam landfall baseline `2024-09-07 13:30 ICT`).
+
+---
+
+## 1. Directory Contents & File Overview
+
+| File Name | Rows | Description & Primary Source |
+| :--- | :---: | :--- |
+| **`01_ResiLend_Yagi_Master_2895_Communes.csv`** | **2,895** | **Unified Master Commune Table** joining `R1` extreme rainfall triggers, `R2` resolved river-gauge triggers, `R3` (`R50`/`R64`) typhoon wind triggers, `B7` verified evaluation outcomes, `UNOSAT 3966` flood benchmark metrics, and `Sentinel-1 SAR` flood screen metrics across all 2,895 communes (original 37-column baseline schema preserved + `B7` columns appended). |
+| **`02_R1_Extreme_Rain_Triggered_Communes_1169.csv`** | **1,169** | Communes triggered by **`R1` Extreme Rainfall** (`>200 mm/24h` or `≥3 consecutive days ≥100 mm/day` under **Art. 44, Decision 18/2021/QĐ-TTg**), computed on hourly `JAXA GSMaP v8` with a +4h operational feed latency (`40.4%` of 2,895 communes; `1,169` from the 24h branch, `0` additional from the 3-day branch). |
+| **`03_R1_Sensitivity_100mm_Communes_2886.csv`** | **2,886** | Lower-bound sensitivity test at `>100 mm/24h` (`99.7%` of 2,895 communes), demonstrating why `100 mm/24h` is too broad and justifying the statutory `200 mm/24h` threshold. |
+| **`03b_R1_Sensitivity_400mm_Communes_0.csv`** | **0** | Upper-bound sensitivity test at `>400 mm/24h` (`0%` of 2,895 communes triggered on the `0.1°` `GSMaP v8` grid; Drive original: `R1_high_triggered_communes.csv`), demonstrating why `400 mm/24h` is overly restrictive on satellite-averaged grid cells. |
+| **`04_R2_NCHMF_River_Station_Peaks_11.csv`** | **11** | Official **NCHMF River Gauge Peaks** from the *Viet Nam Member Report 2024 to ESCAP/WMO Typhoon Committee (Table 1.4)* evaluated against **Alert Level 3 (`BĐ3`, Decision 05/2020/QĐ-TTg)**. `10 / 11` gauges exceeded `BĐ3` (`59.5–126.5h` post-landfall peak); Hanoi peaked at `11.30m` (`0.20m` below `11.50m` `BĐ3`). |
+| **`04b_R2_Bulletin_Trigger_Evidence_11.csv`** | **11** | Audited **First-BĐ3 Bulletin Crossing Evidence** per NCHMF station (`Vu Quang` verified at `2024-09-11 03:30:00 ICT`, `Pha Lai` verified at `2024-09-11 21:00:00 ICT`, `Dap Cau` `2024-09-10 15:30:00`, `Phu Lang Thuong` `2024-09-10 03:30:00`, `Tuyen Quang` `2024-09-10 09:00:00`, `Yen Bai` bounded `[19:00, 21:47] 08/09` and strictly left blank in CSV due to blocked `kttv.gov.vn` `2024-09-08` PDF). |
+| **`05_R3_Wind_R50_Triggered_Communes_2622.csv`** | **2,622** | Communes intersected by the asymmetric 4-quadrant **`R50` (`≥50 kt`)** wind swath from `NOAA IBTrACS v04r01` (`90.6%` of 2,895 communes), with exact UTC+7 trigger timestamps. |
+| **`06_R3_Wind_R64_Triggered_Communes_1879.csv`** | **1,879** | Communes intersected by the **`R64` (`≥64 kt`)** inner hurricane-force wind core (`64.9%` of 2,895 communes), used as a lower-bound sensitivity test for wind-averaging scale differences (1-min JTWC vs. 10-min Vietnam standard). |
+| **`07_UNOSAT_3966_Flood_Benchmark_2895_Communes.csv`** | **2,895** | Primary **UNOSAT Product 3966** (`12 Sep 2024` Red River Delta) commune-level flood benchmark over eligible agricultural (`40`) and built-up (`50`) land (`ESA WorldCover 2021`, slope `≤5°`, excluding permanent water). Contains **2,540 classifiable communes** (`≥95%` coverage: **718 flooded `≥5%`**, **1,822 `<5%`**) and **355 communes outside scan footprint**. |
+| **`08_Sentinel1_SAR_Flood_Screen_2895_Communes.csv`** | **2,895** | Supplementary **Copernicus Sentinel-1 SAR** (`VH` descending pass, `20 Aug–07 Sep` vs. `08–21 Sep 2024`, `after/before > 1.25`) flood screen across all 2,895 communes (**2,774 communes `≥95%` coverage**: **101 flood-flagged**, **2,673 below cutoff**, **121 low coverage**). |
+| **`09_R2_GADM41_Commune_Crosswalk_2895.csv`** | **2,895** | Verified commune-to-gauge geographic crosswalk over GADM v4.1 boundaries and ODV rivers v1 (`MERIT/Hydro` HAND eligibility included), with all confluences resolved under the same nearest-station-on-intersecting-river rule (`Đồng Phúc → Phu Lang Thuong 21.375 km`, `Đức Long → Pha Lai 0.327 km`, `Bến Gót → Vu Quang 38.3 km`). |
+| **`10_B7_UNOSAT_R1_R2_R3_Verified_2895_Communes.csv`** | **2,895** | Closed **B7 Verification Dataset** combining `R1`, verified `R2`, `R3` (`R50`/`R64`), `1-Tap (R1|R2)` vs. `R3-only Watchlist` triage flags, multi-rule active counts, and strict `UNOSAT 3966` confusion outcomes (`2,540` classifiable + `355` `UNCLASSIFIABLE_UNOSAT`). |
+| **`11_PROVENANCE_AND_VERIFICATION_REPORT.md`** | Report | Full provenance ledger (GEE task IDs `TFLUMEYJJWHJN7UTQJQ5GGCN` & `NYJMI2IASYGTL5WGXAIHLYBR`, SHA-256 digests, Colab R1 execution proof, confluence geometry audit, Dual-Track metrics, and Yên Bái `[19:00..22:38]` sensitivity invariance). |
+| **`UNOSAT_3966_AnalysisExtent_RedRiverDelta_20240912.zip`** | Shapefile | Official UNOSAT Product 3966 Red River Delta analysis extent shapefile archive (`EPSG:4326`) used to separate inside-footprint (`2,540`) from outside-footprint (`355`) communes. |
+| **`scripts/ResiLend_R1_R3_Colab_Pipeline.ipynb`** | Notebook | End-to-end Google Colab Jupyter Notebook ingesting `GADM v4.1` boundaries (`2,895` communes), modeling 4-quadrant `IBTrACS` wind swaths (`R50`/`R64`), and computing `GSMaP v8` rolling rainfall triggers (`R1`) across `307` grid cells (exact Drive original). |
+| **`scripts/build_b7_verified_dataset.py`** | Code | Idempotent Python builder combining `01`, `04`, `04b`, and `09` to regenerate `10_B7_UNOSAT_R1_R2_R3_Verified_2895_Communes.csv` and update `01_ResiLend_Yagi_Master_2895_Communes.csv` with assertion checks and sensitivity sweeps. |
+| **`scripts/gee_r2_hand_gadm41_screen.js`** | Code | Google Earth Engine script screening `MERIT/Hydro/v1_0_1` (`hnd <= 10 m`) across the `2,895` communes (Drive original: `B7_R2_GADM41_HAND.js`). |
+| **`scripts/gee_unosat_3966_commune_benchmark.js`** | Code | Google Earth Engine script producing `07_UNOSAT_3966_Flood_Benchmark_2895_Communes.csv` (Drive original: `B6_unosat_reference_by_commune.js`). |
+| **`scripts/gee_sentinel1_sar_commune_flood_screen.js`** | Code | Google Earth Engine script producing `08_Sentinel1_SAR_Flood_Screen_2895_Communes.csv` (Drive original: `B6_yagi_s1_gadm41.js`). |
+| **`scripts/prepare_unosat_3966_shapefiles.py`** | Code | Python (`GeoPandas` + `Shapely`) script repairing the 35,036-part UNOSAT flood multipolygon while preserving area invariance (`< 10⁻⁶` relative delta; Drive original: `prepare_unosat_shapefiles.py`). |
+| **`scripts/normalize_sentinel1_gee_export.py`** | Code | Python script normalizing raw Google Earth Engine CSV exports (stripping `.geo` and `system:index` columns; Drive original: `B6_normalize_s1_export.py`). |
+| **`06_SUPPLEMENTARY_POST_EVENT/B7_experimental_flood_confirmation.py`** | Code | Reproducible Stage-2 post-event flood confirmation CV script (`HistGradientBoostingClassifier`, 4-fold outer × 3-fold inner `GroupKFold` by province over `Sentinel-1 + R2 + R1 + HAND ≤ 10m`). |
+| **`06_SUPPLEMENTARY_POST_EVENT/B7_experimental_flood_confirmation_cv.csv`** | **2,895** | Committed per-commune held-out CV predictions & fold cutoffs (`568 TP, 327 FP, 150 FN, 1,495 TN` → `63.46% Prec / 79.11% Rec`; `355` outside-UNOSAT communes blank/null), synced into `public/data/communes_yagi_status.json`. |
+| **`06_SUPPLEMENTARY_POST_EVENT/B7_experimental_flood_confirmation_report.md`** | Report | Fold-by-fold provincial CV breakdown and strict retrospective scope boundary (uses post-event Sentinel-1 window `08–21 Sep 2024`; does not replace Stage-1 early alerting). |
+| **`06_SUPPLEMENTARY_POST_EVENT/run_cv_from_submission_data.py`** | Code | Standalone runner re-executing the exact `GroupKFold` CV pipeline directly from public repo CSVs (`08_...`, `09_...`, `10_B7_...`) without external handoff dependencies. |
+
+---
+
+## 2. Key Schema & Column Definitions (`01_ResiLend_Yagi_Master_2895_Communes.csv` & `10_B7_UNOSAT_R1_R2_R3_Verified_2895_Communes.csv`)
+
+- **`GID_3`, `NAME_3`, `NAME_2`, `NAME_1`:** GADM v4.1 unique commune identifier, commune name, district name, and province name.
+- **`LON`, `LAT`, `GRID_CELL_ID`:** Commune centroid coordinates (`EPSG:4326`) and matched `0.1° × 0.1°` `GSMaP v8` grid cell ID.
+- **`MAX_24H_RAIN_MM`:** Peak rolling 24-hour rainfall accumulation (mm) during 06–12 September 2024 (`GSMaP v8`).
+- **`R1_PRIMARY_TRIGGERED`, `R1_TRIGGER_REASON`, `R1_OBS_TIME_ICT`, `R1_TRIGGER_TIME_ICT`, `R1_LAG_HOURS`:** Boolean trigger flag under Art. 44 Decision 18/2021/QĐ-TTg (`>200 mm/24h` or `3d ≥100 mm/day`), meteorological observation time, operational trigger time (+4h latency), and hours elapsed relative to landfall (`2024-09-07 13:30 ICT`).
+- **`R3_R50_TRIGGERED`, `R3_R50_TRIGGER_TIME_ICT`, `R3_R50_LAG_HOURS`:** Boolean flag and first intersection timestamp for the 4-quadrant `R50` (`≥50 kt`) storm-force wind footprint (`IBTrACS`).
+- **`R3_R64_TRIGGERED`, `R3_R64_TRIGGER_TIME_ICT`, `R3_R64_LAG_HOURS`:** Boolean flag and first intersection timestamp for the 4-quadrant `R64` (`≥64 kt`) hurricane-force wind core (`IBTrACS`).
+- **`ANY_R1_OR_R3_R50_TRIGGERED` / `ANY_R1_OR_R3_R64_TRIGGERED`:** Combined deterministic trigger status without `R2` (`2,622 / 2,895 = 90.6%` under `R1 ∪ R3_R50`; `2,047 / 2,895 = 70.7%` under `R1 ∪ R3_R64`).
+- **`R2_RIVER_TRIGGERED`, `R2_MAPPING_STATUS` (Master) / `R2_STATUS` (B7), `R2_STATION_NAME`, `R2_MATCHED_RIVERS`, `R2_FIRST_BD3_BULLETIN_ISSUE_ICT`, `R2_PEAK_TIME_ICT`:** Mapped commune-level river-flood trigger (`215` triggered across `Dap Cau`, `Yen Bai`, `Pha Lai`, `Phu Lang Thuong`, `Vu Quang`; `109` Hanoi `< BĐ3` = `0`; `2,571` no selected river intersection = `0`), preserving blank issue time for Yên Bái under strict zero-guessing rules.
+- **`R50_R1_R2_R3_*`, `R64_R1_R2_R3_*`, `R50_RULES_ACTIVE_COUNT`, `R64_RULES_ACTIVE_COUNT`:** Full combined `R1 | R2 | R3` trigger flags, earliest verified timestamps, lag hours, time-verification statuses, `UNOSAT 3966` outcomes (`TP`/`FP`/`FN`/`TN`/`UNCLASSIFIABLE_UNOSAT`), and active rule counts (`0–3`).
+- **`R1_OR_R2_1TAP_*`, `R3_ONLY_R50_WATCHLIST`:** Operational dual-track separation: `1,338` flood/rain `1-Tap` communes (`R1 | R2`) vs. `1,354` wind-only `R3_R50` communes routed to priority triage/watchlist.
+- **`ELIGIBLE_LAND_ALL_M2`, `UNOSAT_ANALYZED_ELIGIBLE_M2`, `UNOSAT_FLOODED_ELIGIBLE_M2`:** Total eligible cropland + built-up area ($m^2$, slope $\le 5^\circ$, excluding permanent water), eligible area covered by the UNOSAT 3966 analysis footprint, and eligible area mapped as flooded by UNOSAT 3966.
+- **`UNOSAT_ANALYSIS_COVERAGE_PCT`, `UNOSAT_FLOOD_PCT_ANALYZED_LAND`, `UNOSAT_FLOOD_LABEL_95_5`, `UNOSAT_REFERENCE_STATUS`:** Share of eligible land inside the UNOSAT analysis footprint, flooded share of analyzed eligible land, binary flood benchmark (`1` if coverage $\ge 95\%$ and flood share $\ge 5\%$; `0` if coverage $\ge 95\%$ and flood share $< 5\%$; blank if coverage $< 95\%$), and coverage classification (`CLASSIFIABLE` vs. `PARTIAL_OR_NO_ANALYSIS_COVERAGE`).
+- **`S1_DESCENDING_COVERAGE_PCT`, `S1_FLOOD_PCT_VALID_LAND`, `S1_FLOOD_LABEL_95_5`:** Sentinel-1 SAR descending pass VH coverage percentage, flooded share of valid eligible land (`after/before > 1.25`), and binary flood screen flag (`1` if coverage $\ge 95\%$ and flood share $\ge 5\%$).
+
+---
+
+## 3. Summary Verification Statistics
+
+1. **Total Monitored Communes:** `2,895` unique `GID_3` units (`12` Northern provinces).
+2. **`R1` Extreme Rain (`>200 mm/24h`):** `1,169 / 2,895` communes (`40.4%`), triggered from `+4.5h` to `+72.5h` relative to landfall (`median = +17.5h`).
+3. **`R3` Typhoon Wind (`IBTrACS`):** `2,622 / 2,895` communes (`90.6%`, `-12.5h` to `+15.5h`) under `R50`; `1,879 / 2,895` (`64.9%`, `-7.5h` to `+10.5h`) under `R64`.
+4. **`R2` River Gauges (`Decision 05/2020/QĐ-TTg`):** `215 / 2,895` communes triggered across `5` gauges (`Dap Cau: 71`, `Yen Bai: 48`, `Pha Lai: 45`, `Phu Lang Thuong: 29`, `Vu Quang: 22`); `109` Hanoi communes below `BĐ3`; `2,571` no selected river intersection; `0` unresolved confluences.
+5. **Combined `B7` (`2,540` Classifiable UNOSAT / `355` Unclassifiable):**
+   - **`R50` (`R1 | R2 | R3_R50`):** `2,692` triggered; `TP=655, FP=1,740, FN=63, TN=82` (`Precision=27.35%`, `Recall=91.23%`); strict verified median lag **`-1.50h`** (`n=618/655`), invariant **`-1.50h`** across Yên Bái `[19:00..22:38] 08/09` (`638/655 <= 72h`).
+   - **`R64` (`R1 | R2 | R3_R64`):** `2,154` triggered; `TP=517, FP=1,483, FN=201, TN=339` (`Precision=25.85%`, `Recall=72.01%`); strict median lag **`+2.50h`** (`n=480/517`), invariant **`+3.50h`** (`n=517/517`) across Yên Bái `[19:00..22:38] 08/09`.
+   - **`R1 | R2` (`1-Tap Action Stream`):** `1,338` triggered; `TP=334, FP=918, FN=384, TN=904` (`Precision=26.68%`, `Recall=46.52%`); strict median lag **`+20.50h`** (`n=297/334`), invariant **`+22.50h`** (`n=334/334`) across Yên Bái `[19:00..22:38] 08/09`.
+   - **`R3_R50`-only Watchlist:** `1,354` communes (`46.8%`).
+6. **`Sentinel-1 SAR` Screen (`08–21 Sep 2024`):** `2,774` communes with `≥95%` coverage (`101` flood-flagged, `2,673` below cutoff) + `121` low/zero coverage (`5` partial, `116` zero).

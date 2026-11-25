@@ -9,7 +9,10 @@
     "peak_time_ict": "2024-09-11 21:00:00",
     "lag_hours": 103.5,
     "r2_triggered": 1,
-    "note": "Peak 86.97 m; source says >AL3 by 3.47 m. Whole-hour time padded to :00:00."
+    "note": "Peak 86.97 m; source says >AL3 by 3.47 m. Whole-hour time padded to :00:00.",
+    "first_bd3_bulletin_ict": null,
+    "bulletin_evidence_status": "ABOVE_CONFIRMED_EARLIEST_BULLETIN_NOT_VERIFIED",
+    "mapped_communes": 0
   },
   {
     "station": "Bao Ha",
@@ -21,7 +24,10 @@
     "peak_time_ict": "2024-09-10 07:00:00",
     "lag_hours": 65.5,
     "r2_triggered": 1,
-    "note": "Peak 61.95 m; source says >AL3 by 4.95 m. Whole-hour time padded to :00:00."
+    "note": "Peak 61.95 m; source says >AL3 by 4.95 m. Whole-hour time padded to :00:00.",
+    "first_bd3_bulletin_ict": null,
+    "bulletin_evidence_status": "ABOVE_CONFIRMED_EARLIEST_BULLETIN_NOT_VERIFIED",
+    "mapped_communes": 0
   },
   {
     "station": "Yen Bai",
@@ -33,7 +39,10 @@
     "peak_time_ict": "2024-09-10 17:00:00",
     "lag_hours": 75.5,
     "r2_triggered": 1,
-    "note": "Peak 35.73 m; source says >AL3 by 3.73 m. Whole-hour time padded to :00:00."
+    "note": "Peak 35.73 m (>BĐ3 3.73 m) at 2024-09-10 17:00. Strict first-BĐ3 minute empty in CSV; evidence bounded [19:00, 21:47] 08/09/2024 (sensitivity invariant).",
+    "first_bd3_bulletin_ict": null,
+    "bulletin_evidence_status": "ABOVE_CONFIRMED_EARLIEST_BULLETIN_BOUNDED_1900_2147_08SEP",
+    "mapped_communes": 48
   },
   {
     "station": "Tuyen Quang",
@@ -45,7 +54,10 @@
     "peak_time_ict": "2024-09-11 05:00:00",
     "lag_hours": 87.5,
     "r2_triggered": 1,
-    "note": "Peak 27.73 m; source says >AL3 by 1.73 m. Whole-hour time padded to :00:00."
+    "note": "Peak 27.73 m; source says >AL3 by 1.73 m. Whole-hour time padded to :00:00.",
+    "first_bd3_bulletin_ict": "2024-09-10 09:00:00",
+    "bulletin_evidence_status": "FIRST_ABOVE_BULLETIN_VERIFIED_IN_ACCESSED_SEQUENCE",
+    "mapped_communes": 0
   },
   {
     "station": "Vu Quang",
@@ -57,7 +69,10 @@
     "peak_time_ict": "2024-09-11 17:00:00",
     "lag_hours": 99.5,
     "r2_triggered": 1,
-    "note": "Source PDF prints 2121 without decimal; interpreted as 21.21 m from table unit and station records, >AL3 by 0.71 m. Whole-hour time padded to :00:00."
+    "note": "Source PDF prints 2121 without decimal; interpreted as 21.21 m from table unit and station records, >AL3 by 0.71 m. Whole-hour time padded to :00:00.",
+    "first_bd3_bulletin_ict": "2024-09-11 03:30:00",
+    "bulletin_evidence_status": "FIRST_ABOVE_BULLETIN_VERIFIED_IN_ACCESSED_SEQUENCE",
+    "mapped_communes": 22
   },
   {
     "station": "Gia Bay",
@@ -69,7 +84,10 @@
     "peak_time_ict": "2024-09-10 01:00:00",
     "lag_hours": 59.5,
     "r2_triggered": 1,
-    "note": "Peak 28.81 m; source says >AL3 by 1.81 m. Whole-hour time padded to :00:00."
+    "note": "Peak 28.81 m; source says >AL3 by 1.81 m. Whole-hour time padded to :00:00.",
+    "first_bd3_bulletin_ict": null,
+    "bulletin_evidence_status": "ABOVE_CONFIRMED_EARLIEST_BULLETIN_NOT_VERIFIED",
+    "mapped_communes": 0
   },
   {
     "station": "Cha",
@@ -81,7 +99,10 @@
     "peak_time_ict": "2024-09-11 23:00:00",
     "lag_hours": 105.5,
     "r2_triggered": 1,
-    "note": "Peak 10.90 m; source says >AL3 by 0.90 m. Whole-hour time padded to :00:00."
+    "note": "Peak 10.90 m; source says >AL3 by 0.90 m. Whole-hour time padded to :00:00.",
+    "first_bd3_bulletin_ict": null,
+    "bulletin_evidence_status": "ABOVE_CONFIRMED_ISSUE_TIME_UNKNOWN",
+    "mapped_communes": 0
   },
   {
     "station": "Dap Cau",
@@ -93,7 +114,10 @@
     "peak_time_ict": "2024-09-12 20:00:00",
     "lag_hours": 126.5,
     "r2_triggered": 1,
-    "note": "Peak 7.79 m; source says >AL3 by 1.49 m. Whole-hour time padded to :00:00."
+    "note": "Peak 7.79 m; source says >AL3 by 1.49 m. Whole-hour time padded to :00:00.",
+    "first_bd3_bulletin_ict": "2024-09-10 15:30:00",
+    "bulletin_evidence_status": "FIRST_ABOVE_BULLETIN_VERIFIED_IN_ACCESSED_SEQUENCE",
+    "mapped_communes": 71
   },
   {
     "station": "Phu Lang Thuong",
@@ -105,7 +129,10 @@
     "peak_time_ict": "2024-09-11 23:00:00",
     "lag_hours": 105.5,
     "r2_triggered": 1,
-    "note": "Peak 7.23 m; source says >AL3 by 0.93 m. Whole-hour time padded to :00:00."
+    "note": "Peak 7.23 m; source says >AL3 by 0.93 m. Whole-hour time padded to :00:00.",
+    "first_bd3_bulletin_ict": "2024-09-10 03:30:00",
+    "bulletin_evidence_status": "FIRST_ABOVE_BULLETIN_VERIFIED_IN_ACCESSED_SEQUENCE",
+    "mapped_communes": 29
   },
   {
     "station": "Pha Lai",
@@ -117,7 +144,10 @@
     "peak_time_ict": "2024-09-12 17:00:00",
     "lag_hours": 123.5,
     "r2_triggered": 1,
-    "note": "Peak 6.25 m; source says >AL3 by 0.25 m. Whole-hour time padded to :00:00."
+    "note": "Peak 6.25 m; source says >AL3 by 0.25 m. Whole-hour time padded to :00:00.",
+    "first_bd3_bulletin_ict": "2024-09-11 21:00:00",
+    "bulletin_evidence_status": "FIRST_ABOVE_BULLETIN_VERIFIED_IN_ACCESSED_SEQUENCE",
+    "mapped_communes": 45
   },
   {
     "station": "Ha Noi",
@@ -129,6 +159,9 @@
     "peak_time_ict": "2024-09-12 02:00:00",
     "lag_hours": 108.5,
     "r2_triggered": 0,
-    "note": "Table 1.4 says >AL2 by 0.80 m; NCHMF later report says peak remains 0.20 m below AL3 (11.50 m). Not an R2 trigger because selected cutoff is AL3."
+    "note": "Table 1.4 says >AL2 by 0.80 m; NCHMF later report says peak remains 0.20 m below AL3 (11.50 m). Not an R2 trigger because selected cutoff is AL3.",
+    "first_bd3_bulletin_ict": null,
+    "bulletin_evidence_status": "NO_BD3_TRIGGER_AT_REPORTED_PEAK",
+    "mapped_communes": 109
   }
 ]

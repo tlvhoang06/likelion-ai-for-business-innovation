@@ -10,6 +10,13 @@ export interface CommuneYagiStatus {
   r1_low: boolean;
   r1_time: string | null;
   r2: number | null;
+  r2_station?: string | null;
+  r2_river?: string | null;
+  r2_first_bulletin_ict?: string | null;
+  r2_peak_time_ict?: string | null;
+  r2_status?: string;
+  r2_distance_km?: number | null;
+  r2_hand_le10_pct?: number | null;
   r3_r50: boolean;
   r3_r64: boolean;
   r3_time: string | null;
@@ -23,6 +30,12 @@ export interface CommuneYagiStatus {
   unosat_label: number | null;
   s1_flood_pct: number | null;
   s1_label: number | null;
+  hand_le10_pct?: number;
+  s1_cov_pct?: number | null;
+  s2_ml_prob?: number | null;
+  s2_ml_confirm?: boolean | null;
+  s2_ml_fold?: number | null;
+  s2_ml_cutoff?: number | null;
   sim_loans: number;
   sim_debt_m_vnd: number;
 }
@@ -35,6 +48,9 @@ export interface RiverStationR2 {
   warning_level: string;
   bd3_m: number;
   peak_time_ict: string;
+  first_bd3_bulletin_ict?: string | null;
+  bulletin_evidence_status?: string;
+  mapped_communes?: number;
   lag_hours: number;
   r2_triggered: number;
   note: string;
@@ -58,11 +74,14 @@ export interface CommunesGeoJson {
 
 export interface LayerToggles {
   r1: boolean;
+  r2: boolean;
   r3: boolean;
   useR64: boolean;
   unosat: boolean;
   s1: boolean;
 }
 
-export type DrawerTab = 'bank' | 'ubnd' | 'exceptions' | 'stations' | 'api';
+export type Lang = 'vi' | 'en';
+
+export type DrawerTab = 'bank' | 'ai' | 'ubnd' | 'exceptions' | 'stations' | 'api';
 

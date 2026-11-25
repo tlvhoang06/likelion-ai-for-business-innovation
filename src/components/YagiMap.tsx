@@ -4,24 +4,33 @@ import { Maximize2 } from 'lucide-react';
 import type {
   CommunesGeoJson,
   CommuneYagiStatus,
+  Lang,
   LayerToggles,
 } from '../types/yagi';
 import {
   evaluateCommuneAtDate,
   formatNum,
   formatVndBillions,
+  isPostEventReferenceReady,
+  SIGNAL_COLORS,
 } from '../utils/yagiLogic';
 
 interface YagiMapProps {
+  lang: Lang;
   geojson: CommunesGeoJson;
   communeMap: Map<string, CommuneYagiStatus>;
   selectedGid: string | null;
+  aiHighlightedGids?: string[];
+  aiFocusSignal?: { gids: string[]; seq: number } | null;
   dateStr: string;
   layers: LayerToggles;
   stats: {
     triggeredCount: number;
     r1Count: number;
+    r2Count: number;
     r3Count: number;
+    priorityCount: number;
+    watchlistCount: number;
     triggeredLoans: number;
     triggeredDebtM: number;
     savedLoans: number;
@@ -30,6 +39,7 @@ interface YagiMapProps {
   borrowerConfirmed: Record<string, boolean>;
   ubndSigned: Record<string, boolean>;
   onSelectCommune: (gid: string | null) => void;
+  onClearAiHighlights?: () => void;
   onToggleLayer: (key: keyof LayerToggles) => void;
   onSelectWindMode: (useR64: boolean) => void;
 }
@@ -47,30 +57,57 @@ function buildCalloutHtml(
   dateStr: string,
   layers: LayerToggles,
   confirmed: boolean,
-  signedUbnd: boolean
+  signedUbnd: boolean,
+  lang: Lang
 ): string {
   const ev = evaluateCommuneAtDate(c, dateStr, layers);
-  let statusText = 'Chưa chạm ngưỡng';
-  if (ev.count === 2) {
-    statusText = '2 nguồn R1+R3';
+  const activeTags = [
+    ev.r1On ? 'R1' : null,
+    ev.r2On ? 'R2' : null,
+    ev.r3On ? 'R3' : null,
+  ].filter(Boolean);
+  let statusText = lang === 'en' ? 'Not triggered' : 'Chưa chạm ngưỡng';
+  if (ev.count >= 2) {
+    statusText =
+      lang === 'en'
+        ? `${ev.count} rules (${activeTags.join('+')})`
+        : `${ev.count} nguồn (${activeTags.join('+')})`;
   } else if (ev.count === 1) {
-    statusText = ev.r1On ? '1 nguồn R1' : '1 nguồn R3';
+    statusText =
+      lang === 'en'
+        ? `1 rule (${activeTags[0]})`
+        : `1 nguồn (${activeTags[0]})`;
   } else if (ev.unosatFlood) {
-    statusText = 'Ngập UNOSAT';
+    statusText = lang === 'en' ? 'UNOSAT flood' : 'Ngập UNOSAT';
   } else if (ev.s1Flood) {
-    statusText = 'Ngập Sentinel-1';
+    statusText = lang === 'en' ? 'Sentinel-1 flood' : 'Ngập Sentinel-1';
   }
 
-  const unoHero =
-    c.unosat_flood_pct !== null ? `${c.unosat_flood_pct.toFixed(1)}%` : 'Ngoài vùng';
-  const s1Txt = c.s1_flood_pct !== null ? `${c.s1_flood_pct.toFixed(1)}%` : 'N/A';
+  const postReady = isPostEventReferenceReady(dateStr);
+  const showRetroOnPopup = postReady || layers.unosat || layers.s1;
+  const unoHero = showRetroOnPopup
+    ? c.unosat_flood_pct !== null
+      ? `${c.unosat_flood_pct.toFixed(1)}%`
+      : lang === 'en'
+      ? 'Out of scan'
+      : 'Ngoài vùng'
+    : lang === 'en'
+    ? 'Post-12/09'
+    : 'Có từ 12/09';
+  const s1Txt = showRetroOnPopup
+    ? c.s1_flood_pct !== null
+      ? `${c.s1_flood_pct.toFixed(1)}%`
+      : 'N/A'
+    : lang === 'en'
+    ? '08–20/09'
+    : '08–20/09';
 
   return `
     <div style="font-family:'IBM Plex Sans',system-ui,sans-serif;padding:10px 12px;">
       <!-- Prominent Commune Title -->
       <div style="padding-right:20px;">
         <div style="font-size:15.5px;font-weight:700;letter-spacing:-0.01em;color:#FFFFFF;line-height:1.2;">
-          Xã ${escHtml(c.name)}
+          ${lang === 'en' ? '' : 'Xã '}${escHtml(c.name)}
         </div>
         <div style="margin-top:2px;font-size:11px;color:#8E97A4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
           ${escHtml(c.district)}, ${escHtml(c.province)} &middot; ${statusText}
@@ -80,27 +117,35 @@ function buildCalloutHtml(
       <!-- Compact 2-Metric Strip -->
       <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px;">
         <div style="background:rgba(255,255,255,0.035);border-radius:6px;padding:6px 8px;">
-          <div style="font-size:10px;color:#7E8A9B;">Ngập UNOSAT</div>
+          <div style="font-size:10px;color:#7E8A9B;">${
+            lang === 'en'
+              ? postReady
+                ? 'UNOSAT (12/09)'
+                : 'UNOSAT (Post-event)'
+              : postReady
+              ? 'UNOSAT (12/09)'
+              : 'UNOSAT (Hậu kiểm)'
+          }</div>
           <div style="margin-top:1px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:#FFFFFF;line-height:1.2;">${unoHero}</div>
         </div>
         <div style="background:rgba(255,255,255,0.035);border-radius:6px;padding:6px 8px;">
-          <div style="font-size:10px;color:#7E8A9B;">Hồ sơ ước tính</div>
-          <div style="margin-top:1px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:#FFFFFF;line-height:1.2;">${c.sim_loans} <span style="font-size:10.5px;font-weight:400;color:#9CA6B4;">khoản</span></div>
+          <div style="font-size:10px;color:#7E8A9B;">${lang === 'en' ? 'Sim. Loans' : 'Hồ sơ giả lập'}</div>
+          <div style="margin-top:1px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:#FFFFFF;line-height:1.2;">${c.sim_loans} <span style="font-size:10.5px;font-weight:400;color:#9CA6B4;">${lang === 'en' ? 'loans' : 'khoản'}</span></div>
         </div>
       </div>
 
       <!-- Single Quiet Metadata Summary Line -->
       <div style="margin-top:7px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#9CA6B4;gap:8px;white-space:nowrap;">
-        <span>Mưa ${c.rain_mm}mm</span>
+        <span>${lang === 'en' ? 'Rain' : 'Mưa'} ${c.rain_mm}mm</span>
         <span>S1 ${s1Txt}</span>
-        <span style="color:#E5E7EB;">${formatVndBillions(c.sim_debt_m_vnd)}</span>
+        <span style="color:#E5E7EB;">${formatVndBillions(c.sim_debt_m_vnd, lang)}</span>
       </div>
 
       ${
         confirmed || signedUbnd
           ? `<div style="margin-top:5px;display:flex;gap:10px;flex-wrap:wrap;font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:#8ACBB5;">
-              ${confirmed ? '<span>&#10003; Đã giữ Nhóm 1</span>' : ''}
-              ${signedUbnd ? '<span>&#10003; UBND đã ký</span>' : ''}
+              ${confirmed ? `<span>&#10003; ${lang === 'en' ? '1-Tap logged (pending)' : 'Đã ghi 1-Chạm (chờ duyệt)'}</span>` : ''}
+              ${signedUbnd ? `<span>&#10003; ${lang === 'en' ? 'Proposed UBND' : 'Đề xuất UBND'}</span>` : ''}
              </div>`
           : ''
       }
@@ -109,9 +154,12 @@ function buildCalloutHtml(
 }
 
 export function YagiMap({
+  lang,
   geojson,
   communeMap,
   selectedGid,
+  aiHighlightedGids = [],
+  aiFocusSignal = null,
   dateStr,
   layers,
   stats,
@@ -119,6 +167,7 @@ export function YagiMap({
   borrowerConfirmed,
   ubndSigned,
   onSelectCommune,
+  onClearAiHighlights,
   onToggleLayer,
   onSelectWindMode,
 }: YagiMapProps) {
@@ -164,7 +213,7 @@ export function YagiMap({
 
     map.attributionControl.setPrefix(false);
     map.attributionControl.addAttribution(
-      'Ranh giới GADM v4.1 (2.895 xã) &middot; Kiểm chứng UNOSAT 3966 &amp; NCHMF B5'
+      'Ranh giới GADM v4.1 (2.895 xã) &middot; Kiểm chứng UNOSAT 3966 &amp; Khí tượng Thủy văn'
     );
 
     // Subtle 1-degree cartographic graticule lines directly on dark matte canvas (zero external API-key watermark)
@@ -226,17 +275,25 @@ export function YagiMap({
           const c = cmap.get(gid);
           if (!c) return;
           const ev = evaluateCommuneAtDate(c, d, lyr);
-          const unoText =
-            c.unosat_flood_pct !== null
-              ? `${c.unosat_flood_pct.toFixed(1)}% ngập`
-              : 'Ngoài UNOSAT';
+          const showRetroTip = isPostEventReferenceReady(d) || lyr.unosat || lyr.s1;
+          const unoText = showRetroTip
+            ? c.unosat_flood_pct !== null
+              ? `${c.unosat_flood_pct.toFixed(1)}% ngập${isPostEventReferenceReady(d) ? '' : ' (hậu kiểm 12/09)'}`
+              : 'Chưa đủ UNOSAT'
+            : 'Hậu kiểm từ 12/09';
+          const r2Text =
+            c.r2 === 1 && c.r2_station
+              ? ` &middot; R2: ${escHtml(c.r2_station)} (&ge;BĐ3)`
+              : c.r2_station === 'Ha Noi'
+              ? ' &middot; Hà Nội (&lt;BĐ3)'
+              : '';
           pathLayer
             .bindTooltip(
               `<div style="font-family:'IBM Plex Sans',sans-serif;line-height:1.4">
                 <div style="font-weight:600;color:#F8FAFC">${escHtml(c.name)}</div>
                 <div style="color:#9CA6B4;font-size:11px">${escHtml(c.district)}, ${escHtml(c.province)}</div>
                 <div style="margin-top:4px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#CBD5E1">
-                  Mưa: ${c.rain_mm}mm &middot; UNOSAT: ${unoText}<br/>
+                  Mưa: ${c.rain_mm}mm &middot; UNOSAT: ${unoText}${r2Text}<br/>
                   Khớp ngày ${d.slice(8, 10)}/${d.slice(5, 7)}: ${ev.count} nguồn &middot; ${c.sim_loans} khoản
                 </div>
               </div>`,
@@ -371,30 +428,80 @@ export function YagiMap({
     }
   }, [geojson, selectedGid]);
 
-  // Re-style all 2,895 polygons immediately when timeline date, toggles, or selectedGid changes
+  // Re-style all 2,895 polygons immediately when timeline date, toggles, AI highlights, or selectedGid changes
   useEffect(() => {
     const fMap = featureLayersRef.current;
     if (fMap.size === 0) return;
 
+    const aiSet = new Set(aiHighlightedGids);
+    const hasAiHighlights = aiSet.size > 0;
     let selectedLayer: L.Path | null = null;
+    const highlightedLayers: L.Path[] = [];
+
     fMap.forEach((layer, gid) => {
       const c = communeMap.get(gid);
       if (!c) return;
       const ev = evaluateCommuneAtDate(c, dateStr, layers);
       const isSel = gid === selectedGid;
-      layer.setStyle({
-        fillColor: ev.fillColor,
-        fillOpacity: ev.fillOpacity,
-        color: isSel ? '#F8FAFC' : ev.strokeColor,
-        weight: isSel ? 2.2 : 0.45,
-      });
-      if (isSel) selectedLayer = layer;
+      const isAiHit = aiSet.has(gid);
+
+      if (isSel) {
+        layer.setStyle({
+          fillColor: ev.fillColor,
+          fillOpacity: ev.fillOpacity,
+          color: '#F8FAFC',
+          weight: 2.2,
+        });
+        selectedLayer = layer;
+      } else if (hasAiHighlights) {
+        layer.setStyle({
+          fillColor: isAiHit && ev.fillColor === '#1C232E' ? '#24403B' : ev.fillColor,
+          fillOpacity: isAiHit ? Math.max(0.62, ev.fillOpacity) : ev.fillOpacity * 0.34,
+          color: isAiHit ? '#CDECD7' : ev.strokeColor,
+          weight: isAiHit ? 1.8 : 0.35,
+        });
+        if (isAiHit) highlightedLayers.push(layer);
+      } else {
+        layer.setStyle({
+          fillColor: ev.fillColor,
+          fillOpacity: ev.fillOpacity,
+          color: ev.strokeColor,
+          weight: 0.45,
+        });
+      }
     });
 
+    for (const hl of highlightedLayers) {
+      hl.bringToFront();
+    }
     if (selectedLayer) {
       (selectedLayer as L.Path).bringToFront();
     }
-  }, [communeMap, dateStr, layers, selectedGid]);
+  }, [communeMap, dateStr, layers, selectedGid, aiHighlightedGids]);
+
+  // Smoothly fit Leaflet camera around AI-filtered commune clusters when requested by Agent tools
+  useEffect(() => {
+    if (!aiFocusSignal || aiFocusSignal.gids.length === 0) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const combined = L.latLngBounds([]);
+    for (const gid of aiFocusSignal.gids) {
+      const layer = featureLayersRef.current.get(gid) as unknown as L.Polygon | undefined;
+      const b = layer?.getBounds?.();
+      if (b && b.isValid()) {
+        combined.extend(b);
+      }
+    }
+    if (combined.isValid()) {
+      map.flyToBounds(combined, {
+        maxZoom: 10.5,
+        paddingTopLeft: [48, 60],
+        paddingBottomRight: [48, 64],
+        duration: 0.5,
+      });
+    }
+  }, [aiFocusSignal]);
 
   // Gentle zoom-in when selecting a commune; cleanly zoom back out when cleared (Esc / outside click / X)
   useEffect(() => {
@@ -470,7 +577,7 @@ export function YagiMap({
 
     const confirmed = !!(borrowerConfirmed[c.gid_3] || campaignLaunched);
     const signedUbnd = !!ubndSigned[c.gid_3];
-    const html = buildCalloutHtml(c, dateStr, layers, confirmed, signedUbnd);
+    const html = buildCalloutHtml(c, dateStr, layers, confirmed, signedUbnd, lang);
 
     if (!popupRef.current) {
       const popup = L.popup({
@@ -495,74 +602,106 @@ export function YagiMap({
     if (!popupRef.current.isOpen()) {
       popupRef.current.openOn(map);
     }
-  }, [selectedGid, communeMap, dateStr, layers, campaignLaunched, borrowerConfirmed, ubndSigned]);
+  }, [selectedGid, communeMap, dateStr, layers, campaignLaunched, borrowerConfirmed, ubndSigned, lang]);
 
   const handleResetView = () => {
     preSelectViewRef.current = null;
     onSelectRef.current(null);
+    onClearAiHighlights?.();
     if (mapRef.current && fullBoundsRef.current?.isValid()) {
       mapRef.current.flyToBounds(fullBoundsRef.current, { padding: [16, 16], duration: 0.4 });
     }
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-canvas">
+    <div data-tour="map-desk" className="flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas">
       {/* Unobstructed Top Map Toolbar & Live Metrics Strip */}
       <div className="flex flex-col gap-2 border-b border-lineStrong bg-[#141922] px-4 py-2.5">
         {/* Stretched Full-Width Layer Trigger Controls */}
         <div
           role="group"
-          aria-label="Lớp tín hiệu bản đồ"
+          aria-label={lang === 'en' ? 'Map signal layers' : 'Lớp tín hiệu bản đồ'}
           className="flex w-full flex-wrap items-center gap-2 sm:flex-nowrap"
         >
           <LayerPill
             active={layers.r1}
-            dotColor="#EA580C"
-            label="R1 Mưa Đ.44"
-            count="1.169"
-            className="min-w-[130px] flex-1 sm:min-w-0"
+            dotColor={SIGNAL_COLORS.r1}
+            label={lang === 'en' ? 'R1 Rain Art.44' : 'R1 Mưa Đ.44'}
+            count={formatNum(1169, lang)}
+            className="min-w-[116px] flex-1 sm:min-w-0"
             onClick={() => onToggleLayer('r1')}
+          />
+
+          <LayerPill
+            active={layers.r2}
+            dotColor={SIGNAL_COLORS.r2}
+            label={lang === 'en' ? 'R2 River AL3' : 'R2 Lũ BĐ3'}
+            count={formatNum(215, lang)}
+            className="min-w-[112px] flex-1 sm:min-w-0"
+            onClick={() => onToggleLayer('r2')}
           />
 
           {/* Clean R3 Wind Pill + Separate Matte R50/R64 Segmented Switch */}
           <div className="flex min-w-[230px] flex-[1.55] items-center gap-1.5 sm:min-w-0">
             <LayerPill
               active={layers.r3}
-              dotColor={layers.useR64 ? '#BE185D' : '#7C3AED'}
-              label={layers.useR64 ? 'R3 Gió R64' : 'R3 Gió R50'}
-              count={layers.useR64 ? '1.879' : '2.622'}
+              dotColor={layers.useR64 ? SIGNAL_COLORS.r3R64 : SIGNAL_COLORS.r3R50}
+              label={
+                layers.useR64
+                  ? lang === 'en'
+                    ? 'R3 Wind R64'
+                    : 'R3 Gió R64'
+                  : lang === 'en'
+                  ? 'R3 Wind R50'
+                  : 'R3 Gió R50'
+              }
+              count={layers.useR64 ? formatNum(1879, lang) : formatNum(2622, lang)}
               className="flex-1"
               onClick={() => onToggleLayer('r3')}
             />
             <div
               role="group"
-              aria-label="Ngưỡng gió R3"
+              aria-label={lang === 'en' ? 'R3 Wind threshold' : 'Ngưỡng gió R3'}
               className="inline-flex h-8 shrink-0 items-center rounded-[5px] border border-[#3E4A5F] bg-[#11161E] p-0.5 font-mono text-[11px]"
             >
               <button
                 type="button"
                 onClick={() => onSelectWindMode(false)}
-                title="Ngưỡng gió bão R50 (2.622 xã)"
+                title={
+                  lang === 'en'
+                    ? 'Typhoon R50 wind band (2,622 communes)'
+                    : 'Ngưỡng gió bão R50 (2.622 xã)'
+                }
                 className={`inline-flex h-full items-center gap-1 rounded-[3px] px-2 transition-colors ${
                   !layers.useR64
                     ? 'bg-[#263042] font-semibold text-white'
                     : 'text-[#8E97A4] hover:text-white'
                 }`}
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-[#7C3AED]" />
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: SIGNAL_COLORS.r3R50 }}
+                />
                 <span>R50</span>
               </button>
               <button
                 type="button"
                 onClick={() => onSelectWindMode(true)}
-                title="Ngưỡng nhạy gió mạnh hơn R64 (1.879 xã)"
+                title={
+                  lang === 'en'
+                    ? 'Stronger R64 sensitivity threshold (1,879 communes)'
+                    : 'Ngưỡng nhạy gió mạnh hơn R64 (1.879 xã)'
+                }
                 className={`inline-flex h-full items-center gap-1 rounded-[3px] px-2 transition-colors ${
                   layers.useR64
                     ? 'bg-[#263042] font-semibold text-white'
                     : 'text-[#8E97A4] hover:text-white'
                 }`}
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-[#BE185D]" />
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: SIGNAL_COLORS.r3R64 }}
+                />
                 <span>R64</span>
               </button>
             </div>
@@ -570,7 +709,7 @@ export function YagiMap({
 
           <LayerPill
             active={layers.unosat}
-            dotColor="#0284C7"
+            dotColor={SIGNAL_COLORS.unosat}
             label="UNOSAT 3966"
             count="718"
             className="min-w-[130px] flex-1 sm:min-w-0"
@@ -578,7 +717,7 @@ export function YagiMap({
           />
           <LayerPill
             active={layers.s1}
-            dotColor="#0D9488"
+            dotColor={SIGNAL_COLORS.s1}
             label="Sentinel-1"
             count="101"
             className="min-w-[130px] flex-1 sm:min-w-0"
@@ -587,74 +726,150 @@ export function YagiMap({
         </div>
 
         {/* Bold Uniformly Highlighted Regional Telemetry Readout */}
-        <div className="flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-1.5 border-t border-line pt-2 text-[12.5px] font-bold text-[#F1F5F9]">
-          <div className="flex items-baseline gap-1.5">
-            <span>Xã kích hoạt:</span>
+        <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-line pt-2 text-[11.5px] font-bold text-[#F1F5F9] xl:text-[12px]">
+          <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+            <span>{lang === 'en' ? 'Early Flag:' : 'Cảnh báo sớm:'}</span>
             <span className="font-mono tabular-nums">
-              {formatNum(stats.triggeredCount)} / 2.895
+              {formatNum(stats.triggeredCount, lang)} / {formatNum(2895, lang)}
             </span>
           </div>
-          <div className="hidden items-baseline gap-1.5 sm:flex">
-            <span>Dư nợ vùng (giả lập):</span>
+          <div className="hidden items-baseline gap-1.5 whitespace-nowrap md:flex">
+            <span className="text-[#8ACBB5]">{lang === 'en' ? 'Priority R1|R2:' : 'Ưu tiên R1|R2:'}</span>
+            <span className="font-mono tabular-nums">{formatNum(stats.priorityCount, lang)}</span>
+            <span className="text-inkDim">·</span>
+            <span className="text-[#ff8ca1]">{lang === 'en' ? 'Watchlist R3:' : 'Theo dõi R3:'}</span>
+            <span className="font-mono tabular-nums">{formatNum(stats.watchlistCount, lang)}</span>
+          </div>
+          <div className="hidden items-baseline gap-1.5 whitespace-nowrap xl:flex">
+            <span>{lang === 'en' ? 'Portfolio (sim):' : 'Dư nợ (giả lập):'}</span>
             <span className="font-mono tabular-nums">
-              {formatVndBillions(stats.triggeredDebtM)}
+              {formatVndBillions(stats.triggeredDebtM, lang)}
             </span>
           </div>
-          <div className="flex items-baseline gap-1.5">
-            <span>Giữ Nhóm 1:</span>
+          <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+            <span>{lang === 'en' ? '1-Tap req (sim):' : 'Đề nghị 1-Chạm:'}</span>
             <span
               className={`font-mono tabular-nums ${
                 stats.savedLoans > 0 ? 'text-[#8ACBB5]' : 'text-[#F1F5F9]'
               }`}
             >
-              {formatNum(stats.savedLoans)} khoản
+              {formatNum(stats.savedLoans, lang)} {lang === 'en' ? 'loans' : 'khoản'}
             </span>
           </div>
         </div>
       </div>
 
       {/* Unobstructed Interactive Leaflet Stage */}
-      <div className="relative min-h-[360px] flex-1 bg-canvas">
+      <div className="relative min-h-[260px] flex-1 overflow-hidden bg-canvas">
         <div ref={containerRef} className="absolute inset-0" />
 
-        {/* Reset Bounds Utility Button on bottom-left */}
-        <div className="pointer-events-none absolute bottom-3 left-3 z-[800]">
+        {/* Reset Bounds & Active AI Highlight Utility Strip on bottom-left */}
+        <div className="pointer-events-none absolute bottom-3 left-3 z-[800] flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={handleResetView}
             className="pointer-events-auto inline-flex h-7 items-center gap-1.5 rounded-[6px] border border-lineStrong bg-panel/95 px-2.5 text-[11.5px] font-medium text-inkMuted transition-colors hover:border-[#8ACBB5] hover:bg-panelAlt hover:text-ink"
           >
             <Maximize2 className="h-3 w-3" strokeWidth={1.75} />
-            <span>Toàn vùng 12 tỉnh</span>
+            <span>{lang === 'en' ? 'All 12 provinces' : 'Toàn vùng 12 tỉnh'}</span>
           </button>
+
+          {aiHighlightedGids.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onClearAiHighlights?.()}
+              className="pointer-events-auto inline-flex h-7 items-center gap-1.5 rounded-[6px] border border-[#8ACBB5]/60 bg-[#14221F]/95 px-2.5 font-mono text-[11px] font-medium text-[#CDECD7] transition-colors hover:border-[#CDECD7] hover:text-white"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-[#8ACBB5]" />
+              <span>
+                {lang === 'en'
+                  ? `AI highlight: ${aiHighlightedGids.length}`
+                  : `AI tô sáng: ${aiHighlightedGids.length} xã`}
+              </span>
+              <span className="ml-0.5 text-[12px] leading-none text-[#8ACBB5]">&times;</span>
+            </button>
+          )}
         </div>
 
         {/* Compact Cartographic Key over Gulf of Tonkin */}
         <div className="pointer-events-none absolute bottom-3 right-3 z-[800] flex flex-col items-end gap-2">
           <div className="pointer-events-auto rounded-[6px] border border-lineStrong bg-panel/95 px-3 py-2 text-[11.5px] text-inkMuted">
             <div className="flex items-center gap-2">
-              <span className="inline-block h-2 w-2 rounded-[1px] bg-[#DC2626]" />
-              <span>2 nguồn khớp (R1 mưa + R3 gió)</span>
+              <span
+                className="inline-block h-2 w-2 rounded-[1px]"
+                style={{ backgroundColor: SIGNAL_COLORS.overlap3 }}
+              />
+              <span>
+                {lang === 'en'
+                  ? '3 rules (R1+R2+R3 · 67.4% flood)'
+                  : '3 nguồn (R1+R2+R3 · 67,4% ngập)'}
+              </span>
             </div>
             <div className="mt-1 flex items-center gap-2">
-              <span className="inline-block h-2 w-2 rounded-[1px] bg-[#EA580C]" />
-              <span>Chỉ R1 Mưa Đ.44 (&gt;200mm)</span>
+              <span
+                className="inline-block h-2 w-2 rounded-[1px]"
+                style={{ backgroundColor: SIGNAL_COLORS.overlap }}
+              />
+              <span>
+                {lang === 'en'
+                  ? '2 rules matched (Priority Review)'
+                  : '2 nguồn khớp (Rà soát Ưu tiên)'}
+              </span>
             </div>
             <div className="mt-1 flex items-center gap-2">
-              <span className="inline-block h-2 w-2 rounded-[1px] bg-[#7C3AED]" />
-              <span>Chỉ R3 Gió R50 / R64</span>
+              <span
+                className="inline-block h-2 w-2 rounded-[1px]"
+                style={{ backgroundColor: SIGNAL_COLORS.r2 }}
+              />
+              <span>
+                {lang === 'en'
+                  ? 'R2 River Stage ≥AL3 (215 communes)'
+                  : 'R2 Lũ sông ≥BĐ3 (215 xã)'}
+              </span>
             </div>
             <div className="mt-1 flex items-center gap-2">
-              <span className="inline-block h-2 w-2 rounded-[1px] bg-[#0284C7]" />
-              <span>UNOSAT 3966 ngập &ge;5%</span>
+              <span
+                className="inline-block h-2 w-2 rounded-[1px]"
+                style={{ backgroundColor: SIGNAL_COLORS.r1 }}
+              />
+              <span>
+                {lang === 'en'
+                  ? 'R1 Rain Art.44 (>200mm)'
+                  : 'R1 Mưa Đ.44 (>200mm)'}
+              </span>
             </div>
             <div className="mt-1 flex items-center gap-2">
-              <span className="inline-block h-2 w-2 rounded-[1px] bg-[#0D9488]" />
-              <span>Sentinel-1 SAR ngập</span>
+              <span
+                className="inline-block h-2 w-2 rounded-[1px]"
+                style={{
+                  backgroundColor: layers.useR64 ? SIGNAL_COLORS.r3R64 : SIGNAL_COLORS.r3R50,
+                }}
+              />
+              <span>
+                {lang === 'en' ? 'R3 Wind Watchlist (R50/R64)' : 'Chỉ R3 Gió (Watchlist R50/R64)'}
+              </span>
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <span
+                className="inline-block h-2 w-2 rounded-[1px]"
+                style={{ backgroundColor: SIGNAL_COLORS.unosat }}
+              />
+              <span>
+                {lang === 'en' ? 'UNOSAT 3966 ≥5% (12/09 post-event)' : 'UNOSAT 3966 ≥5% (hậu kiểm 12/09)'}
+              </span>
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <span
+                className="inline-block h-2 w-2 rounded-[1px]"
+                style={{ backgroundColor: SIGNAL_COLORS.s1 }}
+              />
+              <span>
+                {lang === 'en' ? 'Sentinel-1 SAR (08–20/09)' : 'Sentinel-1 SAR (08–20/09)'}
+              </span>
             </div>
             <div className="mt-1 flex items-center gap-2">
               <span className="inline-block h-2 w-2 rounded-[1px] border border-[#343E4F] bg-[#1C232E]" />
-              <span>Chưa chạm ngưỡng</span>
+              <span>{lang === 'en' ? 'Not triggered' : 'Chưa chạm ngưỡng'}</span>
             </div>
           </div>
         </div>
@@ -688,21 +903,21 @@ function LayerPill({ active, dotColor, label, count, className = '', onClick }: 
       }
       className={`inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-[5px] border px-3 text-[12px] transition-colors ${
         active
-          ? 'font-semibold text-white shadow-sm'
+          ? 'font-semibold text-[#0E141B] shadow-sm'
           : 'border-[#3E4A5F] bg-[#161C26] font-medium text-[#CBD5E1] hover:border-[#5B6B86] hover:bg-[#1E2634] hover:text-white'
       } ${className}`}
     >
       <span
         className="h-2 w-2 shrink-0 rounded-full"
         style={{
-          backgroundColor: active ? 'rgba(255,255,255,0.92)' : dotColor,
+          backgroundColor: active ? 'rgba(14,20,27,0.72)' : dotColor,
         }}
       />
       <span>{label}</span>
       {count && (
         <span
           className={`hidden font-mono text-[11px] xl:inline ${
-            active ? 'text-white/85' : 'text-[#8E97A4]'
+            active ? 'text-[#0E141B]/80' : 'text-[#8E97A4]'
           }`}
         >
           {count}

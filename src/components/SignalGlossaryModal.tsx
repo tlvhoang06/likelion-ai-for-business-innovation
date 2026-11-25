@@ -1,0 +1,240 @@
+import { Info, X } from 'lucide-react';
+import type { Lang } from '../types/yagi';
+import { SIGNAL_COLORS } from '../utils/yagiLogic';
+
+interface SignalGlossaryModalProps {
+  lang: Lang;
+  open: boolean;
+  onClose: () => void;
+}
+
+interface GlossaryEntry {
+  code: string;
+  color: string;
+  titleVi: string;
+  titleEn: string;
+  ruleVi: string;
+  ruleEn: string;
+  meaningVi: string;
+  meaningEn: string;
+  noteVi?: string;
+  noteEn?: string;
+}
+
+const SIGNAL_ENTRIES: GlossaryEntry[] = [
+  {
+    code: 'R1',
+    color: SIGNAL_COLORS.r1,
+    titleVi: 'R1 · Mưa cực đoan 24h',
+    titleEn: 'R1 · Extreme 24h Rainfall',
+    ruleVi: 'Ngưỡng > 200mm/24h (Đ.44 QĐ 18/2021) · 1.169 / 2.895 xã',
+    ruleEn: 'Threshold > 200mm/24h (Art.44 Dec.18) · 1,169 / 2,895 communes',
+    meaningVi:
+      'Tín hiệu mưa cực đoan đưa xã vào Luồng Rà soát Ưu tiên (R1 | R2 = 1.338 xã), chuẩn bị hậu kiểm để phát đề xuất giãn nợ.',
+    meaningEn:
+      'Extreme rainfall flag routing communes into Priority Review (R1 | R2 = 1,338 communes) for fast flood verification.',
+    noteVi:
+      'Hạn chế: Mưa tại chỗ < 200mm vẫn có thể ngập nặng do lũ sông dồn (R2 bắt thêm +169 xã; số còn lại qua tab Ngoại lệ).',
+    noteEn:
+      'Gap: Communes below 200mm can still flood from downstream runoff (R2 adds +169 communes; remainder surfaced via Exceptions).',
+  },
+  {
+    code: 'R2',
+    color: SIGNAL_COLORS.r2,
+    titleVi: 'R2 · Lũ sông ≥BĐ3 (đã nối xã)',
+    titleEn: 'R2 · River Flood ≥AL3 (Mapped)',
+    ruleVi: '215 xã ≥BĐ3 (Precision 61,62%) · 109 xã Hà Nội <BĐ3 · 0 ca ngã ba mơ hồ',
+    ruleEn: '215 communes ≥AL3 (61.62% Prec.) · 109 Ha Noi <AL3 · 0 unresolved confluences',
+    meaningVi:
+      'Đã nối xong 2.895 xã GADM v4.1 với 11 trạm thủy văn trên 6 tuyến sông Bắc Bộ theo quy tắc HAND ≤ 10m và trạm gần nhất.',
+    meaningEn:
+      'Mapped across all 2,895 communes from 11 NCHMF gauges on 6 Northern rivers using HAND ≤10m floodability and nearest-gauge rules.',
+    noteVi:
+      'Yên Bái đạt ≥BĐ3 khung 19:00–21:47 08/09; Phủ Lạng Thương 09/09 09:30; Đáp Cầu 10/09 15:30; Vụ Quang 11/09 03:30*; Phả Lại 11/09 21:00 (kiểm chứng với 15:30).',
+    noteEn:
+      'Yen Bai reached ≥AL3 within [19:00–21:47] 08/09; Phu Lang Thuong 09/09 09:30; Dap Cau 10/09 15:30; Vu Quang 11/09 03:30*; Pha Lai 11/09 21:00 (checked vs 15:30).',
+  },
+  {
+    code: 'R3',
+    color: SIGNAL_COLORS.r3R50,
+    titleVi: 'R3 · Trường gió bão (Watchlist)',
+    titleEn: 'R3 · Typhoon Wind Band (Watchlist)',
+    ruleVi: 'R50: 2.622 xã (1.354 xã chỉ có gió R3 vào Watchlist) · R64: 1.879 xã',
+    ruleEn: 'R50: 2,622 communes (1,354 R3-only in Watchlist) · R64: 1,879 communes',
+    meaningVi:
+      'Xã chỉ chạm R3 (chưa chạm R1/R2) được xếp vào Watchlist theo dõi vì gió bão diện rộng chưa đủ chứng minh ngập thực tế.',
+    meaningEn:
+      'Communes with R3 wind alone (without R1/R2) enter Watchlist, since gale wind alone does not confirm flood loss without confirmation.',
+  },
+  {
+    code: 'R1+R2+R3',
+    color: SIGNAL_COLORS.overlap3,
+    titleVi: 'Hội tụ đa nguồn (2–3 quy tắc)',
+    titleEn: 'Multi-Rule Convergence (2–3 rules)',
+    ruleVi: '46 xã chạm cả 3 nguồn R1+R2+R3 (67,39% ngập UNOSAT) · 1.222 xã 2 nguồn',
+    ruleEn: '46 communes hit all 3 rules R1+R2+R3 (67.39% flooded) · 1,222 dual-rule',
+    meaningVi:
+      'Cảnh báo sớm gộp R1|R2|R3_R50 phủ 2.692/2.895 xã (27,35% Prec / 91,23% Rec). Riêng R1|R2 (1.338 xã) vào Luồng Rà soát Ưu tiên.',
+    meaningEn:
+      'Combined early flag (2,692/2,895) achieves 27.35% Prec / 91.23% Rec vs UNOSAT; R1|R2 (1,338 communes) enters Priority Review.',
+  },
+  {
+    code: 'UNOSAT',
+    color: SIGNAL_COLORS.unosat,
+    titleVi: 'UNOSAT 3966 · Ảnh vệ tinh vùng ngập ĐBSH',
+    titleEn: 'UNOSAT 3966 · Satellite Flood Extent',
+    ruleVi: 'Chấm được 2.540 xã (718 xã ngập ≥ 5%, 1.822 xã < 5%) · Ngoài vùng: 355 xã',
+    ruleEn: '2,540 classifiable (718 ≥ 5% flood, 1,822 < 5%) · Outside scan: 355',
+    meaningVi:
+      'Tham chiếu hậu kiểm ngập thực tế. Các xã nằm trong 355 xã ngoài vùng quét được giữ trạng thái "Chưa biết", không quy về 0%.',
+    meaningEn:
+      'Post-event flood validation reference. The 355 outside-scan communes remain marked Unknown coverage rather than 0%.',
+  },
+  {
+    code: 'S1',
+    color: SIGNAL_COLORS.s1,
+    titleVi: 'Sentinel-1 SAR · Ảnh radar xuyên mây',
+    titleEn: 'Sentinel-1 SAR · Auxiliary Radar Layer',
+    ruleVi: 'Lớp phụ trợ · 101 xã ghi nhận dấu hiệu ngập',
+    ruleEn: 'Auxiliary layer · 101 communes flagged with flood proxy',
+    meaningVi:
+      'Ảnh radar xuyên mây hỗ trợ đối chiếu thêm cho các vùng thiếu ảnh quang học hoặc nằm ngoài vùng quét UNOSAT.',
+    meaningEn:
+      'Cloud-penetrating radar flood proxy aiding review where optical scans or UNOSAT coverage are missing.',
+  },
+];
+
+/** Concise glossary modal explaining R1/R2/R3, UNOSAT, Sentinel-1 and key banking regulations. */
+export function SignalGlossaryModal({
+  lang,
+  open,
+  onClose,
+}: SignalGlossaryModalProps) {
+  if (!open) return null;
+  const isEn = lang === 'en';
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="signal-glossary-title"
+      className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/75 p-4"
+      onClick={onClose}
+    >
+      <div
+        data-tour="glossary-modal"
+        className="max-h-[88vh] w-full max-w-[780px] overflow-y-auto rounded-[6px] border border-lineStrong bg-panel text-ink shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-lineStrong px-5 py-3.5">
+          <div>
+            <div className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium text-[#8ACBB5]">
+              <Info className="h-3.5 w-3.5" strokeWidth={1.9} />
+              <span>
+                {isEn ? 'Signal & Terminology Reference' : 'Giải thích chỉ số & Thuật ngữ'}
+              </span>
+            </div>
+            <h2
+              id="signal-glossary-title"
+              className="mt-0.5 text-[15px] font-semibold text-ink"
+            >
+              {isEn
+                ? 'What are R1, R2, R3, UNOSAT 3966, Sentinel-1 & Group 1 retention?'
+                : 'R1, R2, R3, UNOSAT 3966, Sentinel-1 và Nhóm nợ 1 nghĩa là gì?'}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] border border-line text-inkMuted hover:bg-panelAlt hover:text-ink"
+            aria-label={isEn ? 'Close' : 'Đóng'}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-5 text-[12.5px]">
+          <div>
+            <div className="mb-2 text-[12px] font-semibold text-ink">
+              {isEn
+                ? '1. Map Signal Layers & Color Legend'
+                : '1. Các lớp tín hiệu thiên tai & màu trên bản đồ'}
+            </div>
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {SIGNAL_ENTRIES.map((item) => (
+                <div
+                  key={item.code}
+                  className="rounded-[5px] border border-lineStrong bg-canvas p-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span className="font-semibold text-ink">
+                      {isEn ? item.titleEn : item.titleVi}
+                    </span>
+                  </div>
+                  <div className="mt-1 font-mono text-[10.5px] text-[#8ACBB5]">
+                    {isEn ? item.ruleEn : item.ruleVi}
+                  </div>
+                  <p className="mt-1.5 leading-relaxed text-inkMuted">
+                    {isEn ? item.meaningEn : item.meaningVi}
+                  </p>
+                  {(item.noteVi || item.noteEn) && (
+                    <p className="mt-1 border-t border-line pt-1 text-[11.5px] text-inkDim">
+                      {isEn ? item.noteEn : item.noteVi}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-line pt-3.5">
+            <div className="mb-2 text-[12px] font-semibold text-ink">
+              {isEn
+                ? '2. Credit Operations & Regulatory Terms'
+                : '2. Khái niệm nghiệp vụ tín dụng trên giao diện'}
+            </div>
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+              <div className="rounded-[5px] border border-lineStrong bg-canvas p-3">
+                <div className="font-mono text-[11px] font-semibold text-[#CDECD7]">
+                  {isEn ? 'Dec. 55 · Cir. 29/2025 (10d)' : 'NĐ 55 · TT 29/2025 (10 ngày)'}
+                </div>
+                <p className="mt-1 text-[12px] leading-relaxed text-inkMuted">
+                  {isEn
+                    ? 'Agri restructuring must finish while the loan is current or <10 days overdue; non-agri relief waited 88 days for Cir. 53/2024 after Yagi.'
+                    : 'Cửa sổ dưới 10 ngày quá hạn để nhận đề nghị 1-chạm giữ Nhóm 1 nông nghiệp (ngoài nông nghiệp sau Yagi phải chờ 88 ngày mới có TT 53/2024).'}
+                </p>
+              </div>
+
+              <div className="rounded-[5px] border border-lineStrong bg-canvas p-3">
+                <div className="font-mono text-[11px] font-semibold text-[#CDECD7]">
+                  {isEn ? 'Group 1 & 5% Decree 86' : 'Giữ Nhóm 1 & Dự phòng 5%'}
+                </div>
+                <p className="mt-1 text-[12px] leading-relaxed text-inkMuted">
+                  {isEn
+                    ? 'Retaining Debt Group 1 avoids migrating to Group 2 (special mention), preventing a 5% potential specific risk provision under Dec. 86/2024.'
+                    : 'Giữ nguyên Nhóm nợ 1 giúp khoản vay không rớt sang Nhóm 2 (nợ cần chú ý) — qua đó tránh phải trích lập 5% dự phòng rủi ro theo NĐ 86/2024.'}
+                </p>
+              </div>
+
+              <div className="rounded-[5px] border border-lineStrong bg-canvas p-3">
+                <div className="font-mono text-[11px] font-semibold text-[#CDECD7]">
+                  {isEn ? 'Stage-2 Confirm → 1-Tap Request' : 'Hậu kiểm Tầng 2 → Đề nghị 1-Chạm'}
+                </div>
+                <p className="mt-1 text-[12px] leading-relaxed text-inkMuted">
+                  {isEn
+                    ? 'Post-event S1+R2+R1+HAND confirmation (13/11 CV 63.46%/79.11%; 215-R2 re-run 63.38%/79.81%) + proposed UBND attestation unlock 1-Tap requests; banks retain 100% approval authority.'
+                    : 'Sau hậu kiểm Sentinel-1 (CV 13/11: 63,46%/79,11%; chạy lại 215 R2: 63,38%/79,81%) hoặc đề xuất UBND xác nhận, khách hàng gửi đề nghị 1-Chạm; ngân hàng giữ quyền xét duyệt cuối.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
